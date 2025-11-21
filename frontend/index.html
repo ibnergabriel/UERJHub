@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portal Acadêmico</title>
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans&display=swap" rel="stylesheet" />
+  <link href="./css/main_pagina_inicial.css" rel="stylesheet" />
+  <link rel="icon" type="image/x-icon" href="images/logomarca-uerj">
+
+  <style>
+    /* ====== ESTILO DOS BOTÕES ====== */
+    .portal-btn {
+      position: absolute;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #fff;
+      font-family: 'Open Sans', sans-serif;
+      font-size: 32px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: transform 0.2s, background 0.2s;
+      border-radius: 12px;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    .portal-btn:hover {
+      transform: scale(1.05);
+      background: rgba(0, 0, 0, 0.15);
+    }
+
+    /* Ajustes individuais */
+    .btn-disciplinas {
+      top: 320px;
+      left: 44px;
+      width: 422px;
+      height: 286px;
+      background: rgba(11,132,200,0.8);
+    }
+    .btn-aviso {
+      top: 320px;
+      left: 489px;
+      width: 558px;
+      height: 395px;
+      background: rgba(45,149,208,0.8);
+    }
+    .btn-eventos {
+      top: 316px;
+      left: 1072px;
+      width: 314px;
+      height: 395px;
+      background: rgba(8,102,154,0.8);
+    }
+    .btn-oportunidades {
+      top: 630px;
+      left: 44px;
+      width: 422px;
+      height: 367px;
+      background: rgba(54,120,156,0.8);
+    }
+    .btn-professores {
+      top: 738px;
+      left: 489px;
+      width: 892px;
+      height: 250px;
+      background: rgba(127,181,212,0.8);
+    }
+  </style>
+</head>
+<body>
+  <div class="v172_548">
+    <div class="v172_549"></div>
+    <div class="v172_551"></div>
+    <span class="v172_568">Bem-vindo(a) ao Ambiente do Portal</span>
+
+    <!-- Botões com links -->
+    <a href="disciplinas.html" class="portal-btn btn-disciplinas">Disciplinas</a>
+    <a href="avisos.html" class="portal-btn btn-aviso">Quadro de Avisos</a>
+    <a href="eventos.html" class="portal-btn btn-eventos">Eventos</a>
+    <a href="oportunidades.html" class="portal-btn btn-oportunidades">Oportunidades</a>
+    <a href="professores.html" class="portal-btn btn-professores">Lista de Professores</a>
+  </div>
+</body>
+</html>
