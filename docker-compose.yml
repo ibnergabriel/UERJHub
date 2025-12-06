@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  # --- SERVIÇO DO BACKEND (API) ---
+  api:
+    build: .
+    container_name: uerjhub_backend
+    ports:
+      - "8000:8000"  # Acessar via localhost:8000
+    environment:
+      - MONGO_URL=mongodb://mongo_db:27017  # Conecta no serviço abaixo
+    volumes:
+      - ./backend/uploads:/app/backend/uploads # Salva arquivos na sua máquina real
+    depends_on:
+      - mongo_db
+
+  # --- SERVIÇO DO BANCO DE DADOS ---
+  mongo_db:
+    image: mongo:latest
+    container_name: uerjhub_mongo
+    ports:
+      - "27017:27017" # Para você acessar via Compass se quiser
+    volumes:
+      - mongo_data:/data/db # <--- IMPORTANTE: Persistência dos dados
+
+# Define onde o volume do banco fica salvo fisicamente
+volumes:
+  mongo_data:

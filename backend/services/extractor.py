@@ -4,149 +4,169 @@ import io
 
 class UERJExtractor:
     
-    # Padrão para pegar código, nome e parar antes dos números (créditos/horas)
-    RID_LINE_PATTERN = r'([A-Z]{3}\d{2}-\d{5})\s+(.*?)(?=\s+\d+\s+\d+)'
-    
-    # Padrão histórico: Código + Nome + (Lookahead para números de carga horária)
-    HIST_LINE_PATTERN = r'([A-Z]{3}\d{2}-\d{5})\s+(.*?)(?=\s+\d+\s+\d+)'
-    
+    # REGEX GERAIS
     SEMESTER_PATTERN = r'(\d{4}/\d)'
+    CODE_PATTERN_START = r'([A-Z]{3}\d{2}-\d{5})\s+(.*)' 
 
     @staticmethod
     def parse_rid(file_bytes: bytes) -> dict:
-        """
-        Lê APENAS 'Inscrição ACEITA' e ignora o resto.
-        """
+        print("--- INICIANDO EXTRAÇÃO DO RID (SEM DUPLICATAS) ---")
         full_text = ""
         try:
             with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
                 for page in pdf.pages:
                     full_text += page.extract_text(layout=True) or ""
-        except Exception:
+        except Exception as e:
+            print(f"❌ Erro PDF RID: {e}")
             return {}
 
-        # 1. RECORTAR O TEXTO (Filtro de Aceitas)
-        # Só olhamos o que está depois de "Inscrição ACEITA"
-        if "Inscrição ACEITA" in full_text:
-            full_text = full_text.split("Inscrição ACEITA")[-1]
-        
-        # Se tiver "Inscrição NÃO ACEITA", cortamos tudo que vem depois
-        if "Inscrição NÃO ACEITA" in full_text:
-            full_text = full_text.split("Inscrição NÃO ACEITA")[0]
+        # 1. Filtro de Seção
+        text_upper = full_text.upper()
+        idx_aceita = text_upper.find("INSCRIÇÃO ACEITA")
+        idx_nao_aceita = text_upper.find("INSCRIÇÃO NÃO ACEITA")
 
-        # Tenta achar o semestre no cabeçalho (ou usa "Atual" se não achar)
-        # Como cortamos o texto, o semestre pode ter ficado pra trás, 
-        # mas geralmente o RID repete ou o sistema assume o atual.
-        # Para garantir, vou usar "Atual" se não achar no fragmento, 
-        # mas idealmente o semestre é passado por fora ou pego antes do corte.
-        semestre_atual = "Atual" 
-        # (Opcional: Se quiser pegar o semestre do topo, faça a busca ANTES do split)
+        if idx_aceita != -1:
+            relevant_text = full_text[idx_aceita:]
+            if idx_nao_aceita != -1 and idx_nao_aceita > idx_aceita:
+                relevant_text = relevant_text[:idx_nao_aceita - idx_aceita]
+        else:
+            relevant_text = full_text
+
+        sem_match = re.search(r'(\d{4}/\d)', full_text)
+        semestre_atual = sem_match.group(1).replace('/', '.') if sem_match else "Atual"
 
         disciplinas = []
-        lines = full_text.split('\n')
+        codigos_vistos = set() # <--- O SEGREDINHO ANTI-DUPLICIDADE
         
+        lines = relevant_text.split('\n')
         current_disc = None
         capturing_horario = False
-        dias = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sab"]
+        dias_semana = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sab"]
 
         for line in lines:
             line = line.strip()
-            
-            # Regex de captura
-            match = re.search(UERJExtractor.RID_LINE_PATTERN, line)
+            if not line: continue
+
+            match = re.search(UERJExtractor.CODE_PATTERN_START, line)
             
             if match:
-                if current_disc: disciplinas.append(current_disc)
+                # Salva o anterior antes de começar o novo
+                if current_disc: 
+                    disciplinas.append(current_disc)
                 
                 codigo = match.group(1)
-                nome_limpo = match.group(2).strip()
                 
+                # SE JÁ VIMOS ESSE CÓDIGO NESTE ARQUIVO, IGNORA (Evita duplicata)
+                if codigo in codigos_vistos:
+                    print(f"⚠️ Ignorando duplicata no RID: {codigo}")
+                    current_disc = None # Reseta para não capturar horário de duplicata
+                    capturing_horario = False
+                    continue
+                
+                codigos_vistos.add(codigo) # Marca como visto
+
+                resto = match.group(2)
+                split_nome = re.split(r'(\d)', resto, maxsplit=1)
+                nome_limpo = split_nome[0].strip()
+                
+                turma = "1"
+                if len(split_nome) > 1:
+                    numeros = re.findall(r'\b\d+\b', split_nome[1] + split_nome[2])
+                    if len(numeros) >= 4:
+                        turma = str(int(numeros[3]))
+
                 current_disc = {
                     "codigo": codigo,
                     "nome": nome_limpo,
+                    "turma": turma,
                     "horario": [],
                     "status": "Cursando",
-                    "nota": None
+                    "nota": None,
+                    "disciplina_id": None
                 }
+                
+                for d in dias_semana:
+                    if d in resto:
+                        idx_dia = line.find(d)
+                        if idx_dia != -1: current_disc["horario"].append(line[idx_dia:])
+                        break
+
                 capturing_horario = True
                 continue
 
             if capturing_horario and current_disc:
-                if any(line.startswith(d) for d in dias):
+                if any(line.startswith(d) for d in dias_semana):
                     current_disc["horario"].append(line)
                 
-                if "Ramificações" in line or "Total" in line:
+                if "Inscrição" in line or "Total" in line:
                     capturing_horario = False
 
         if current_disc: disciplinas.append(current_disc)
-        
-        # Retorna com a chave genérica ou você pode injetar o semestre correto na rota
         return {semestre_atual: disciplinas}
 
     @staticmethod
     def parse_historico(file_bytes: bytes) -> dict:
-        """
-        Lê histórico, corrige bug de 'um a menos' e ignora canceladas.
-        """
+        print("--- INICIANDO EXTRAÇÃO HISTÓRICO (SEM DUPLICATAS) ---")
         full_text = ""
         try:
             with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
                 for page in pdf.pages:
                     full_text += page.extract_text(layout=True) or ""
-        except Exception:
-            return {}
+        except: return {}
 
         historico = {}
+        codigos_vistos_no_semestre = set() # <--- NOVO
         current_sem = None
         lines = full_text.split('\n')
 
         for line in lines:
             line = line.strip()
+            if not line: continue
 
-            # 1. Detecta Semestre
+            # 1. Semestre
             sem_match = re.search(UERJExtractor.SEMESTER_PATTERN, line)
             if sem_match:
                 current_sem = sem_match.group(1).replace('/', '.')
-                if current_sem not in historico: historico[current_sem] = []
-                # RETIREI O 'continue' AQUI! 
-                # Isso corrige o bug de pular a disciplina se ela estiver na mesma linha do ano.
+                if current_sem not in historico: 
+                    historico[current_sem] = []
+                    codigos_vistos_no_semestre = set() # Reseta o set a cada semestre novo
+                    print(f"📅 Semestre: {current_sem}")
 
-            # 2. Detecta Disciplina
+            # 2. Ignora Cancelado
+            if "Cancelado" in line: continue
+
+            # 3. Disciplina
             if current_sem:
-                # Verifica se é Cancelado ANTES de tentar processar tudo
-                if "Cancelado" in line:
-                    continue # Pula essa linha imediatamente
-
-                match = re.search(UERJExtractor.HIST_LINE_PATTERN, line)
-                
+                match = re.search(UERJExtractor.CODE_PATTERN_START, line)
                 if match:
                     codigo = match.group(1)
-                    nome_limpo = match.group(2).strip()
                     
-                    # Pega Nota (Procura float no final da linha)
+                    # Checagem de Duplicidade dentro do MESMO semestre
+                    if codigo in codigos_vistos_no_semestre:
+                        continue
+                    codigos_vistos_no_semestre.add(codigo)
+
+                    resto = match.group(2)
+                    split_nome = re.split(r'(\d)', resto, maxsplit=1)
+                    nome_limpo = split_nome[0].strip()
+                    
                     nota = None
-                    # Regex busca numeros como 8,50 ou 10,00
-                    numeros = re.findall(r'(\d{1,2}[.,]\d{1,2})', line)
-                    if numeros:
-                        try:
-                            # Pega o último número da linha, que costuma ser a nota
-                            nota = float(numeros[-1].replace(',', '.'))
-                        except:
-                            pass
-                    
+                    nums = re.findall(r'(\d{1,2}[.,]\d{1,2})', line)
+                    if nums:
+                        try: nota = float(nums[-1].replace(',', '.'))
+                        except: pass
+
                     status = "Cursado"
                     if "Aprov" in line: status = "Aprovado"
                     elif "Reprov" in line: status = "Reprovado"
-                    
-                    # (Se fosse Cancelado, já teria caído no if acima)
 
-                    disc = {
+                    historico[current_sem].append({
                         "codigo": codigo,
                         "nome": nome_limpo,
                         "nota": nota,
                         "status": status,
-                        "horario": []
-                    }
-                    historico[current_sem].append(disc)
+                        "horario": [],
+                        "turma": None 
+                    })
 
         return historico

@@ -1,99 +1,117 @@
+# models.py
+
 from pydantic import BaseModel, Field, ConfigDict, EmailStr, BeforeValidator
-from typing import Optional, List, Dict, Annotated, Any
+from typing import Optional, List, Dict, Annotated
 from datetime import datetime
 from enum import Enum
 
-# 1. Helper para lidar com ObjectId do MongoDB no Pydantic v2
-# Isso transforma o ObjectId em string quando enviamos o JSON para o frontend
 PyObjectId = Annotated[str, BeforeValidator(str)]
 
 class MongoBaseModel(BaseModel):
-    """Classe base para configurar o mapeamento de _id para id"""
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True, json_encoders={datetime: lambda dt: dt.isoformat()})
 
-    model_config = ConfigDict(
-        populate_by_name=True,
-        arbitrary_types_allowed=True,
-        json_encoders={datetime: lambda dt: dt.isoformat()}
-    )
-
-# --- Sub-modelos (usados dentro de outros documentos) ---
-
+# --- Auxiliares ---
 class Feedback(BaseModel):
     user_id: PyObjectId
-    nota: int = Field(ge=0, le=5) # Nota entre 0 e 5
+    nota: int = Field(ge=0, le=5)
     comentario: Optional[str] = None
     data: datetime = Field(default_factory=datetime.now)
 
-# --- Modelos das Coleções Principais ---
+class FeedbackInput(BaseModel):
+    """O que o aluno envia"""
+    nota: int = Field(..., ge=0, le=5, description="Nota de 0 a 5")
+    comentario: Optional[str] = Field(None, max_length=500)
+    # user_id e data serão inseridos pelo sistema
 
-# 1. Usuários (Alunos)
+# --- 1. Usuários e Disciplinas (Mantidos do anterior) ---
 class DisciplinaAluno(BaseModel):
-    codigo: str              # Ex: FEN06-05080
-    nome: str                # Ex: Controle de Processos (Sem o lixo "4 75...")
-    horario: List[str] = []  # Preenchido apenas nas atuais
-    nota: Optional[float] = None # Preenchido apenas no histórico
-    status: str = "Cursando" # Cursando, Aprovado, Reprovado
-    disciplina_id: Optional[PyObjectId] = None # Link para o banco geral
+    codigo: str
+    nome: str
+    turma: Optional[str] = None 
+    horario: List[str] = []
+    nota: Optional[float] = None
+    status: str = "Cursando"
+    disciplina_id: Optional[PyObjectId] = None
 
-# Modelo do Usuário
+class Discipline(MongoBaseModel):
+    codigo: str
+    nome: str
+    turma: str
+    semestre: str
+    horario: List[str] = []
+    membros: List[PyObjectId] = [] 
+    professor_id: Optional[PyObjectId] = None
+    whatsapp_link: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.now)
+
 class User(MongoBaseModel):
     nome: str
     email: EmailStr
     senha_hash: str
-    
-    # FORMATO: { "2025.1": [ { ...disciplina... }, { ... } ] }
     disciplinas_atuais: Dict[str, List[DisciplinaAluno]] = {} 
-    
-    # FORMATO: { "2020.2": [...], "2021.1": [...] }
     historico: Dict[str, List[DisciplinaAluno]] = {}          
-    
-    periodo_atual: str = "2025.1" # Controle interno
+    periodo_atual: str = "2025.1"
     created_at: datetime = Field(default_factory=datetime.now)
-    
-# 2. Professores
+
+# --- 2. Professores (Novo Formato) ---
 class Professor(MongoBaseModel):
     nome: str
+    email: EmailStr
     departamento: str
-    tags: List[str] = [] # Ex: ["calculo", "didatico"]
-    feedbacks: List[Feedback] = [] # Lista de sub-documentos
-
-# 3. Disciplinas
-class Discipline(MongoBaseModel):
-    nome: str
-    codigo: str # Ex: MAT101
-    professor_id: Optional[PyObjectId] = Field(default=None, alias="professor")
-    whatsapp_link: Optional[str] = None
-    classroom_link: Optional[str] = None
-    quadro_aviso: List[str] = [] # Pode ser lista de strings ou IDs de avisos
+    # Lista de CÓDIGOS de disciplinas que ele pode dar (ex: ["FEN06-05080", "MAT01..."])
+    disciplinas_ofertadas: List[str] = [] 
+    feedbacks: List[Feedback] = []
     created_at: datetime = Field(default_factory=datetime.now)
 
-# 4. Materiais
+# --- 3. Materiais (Estrutura de Repositório) ---
 class MaterialTipo(str, Enum):
     PDF = "PDF"
     VIDEO = "VIDEO"
     SLIDE = "SLIDE"
     OUTRO = "OUTRO"
+    LINK = "LINK"
 
-class Material(MongoBaseModel):
-    disciplina_id: PyObjectId
+class ArquivoMaterial(BaseModel):
+    """Representa um arquivo individual dentro da pasta"""
     titulo: str
     url: str
     tipo: MaterialTipo = MaterialTipo.PDF
-    tags_professor: List[str] = [] # Ex: ["importante", "p1"]
+    aluno_autor_id: PyObjectId # Quem upou
+    likes: int = 0
     data: datetime = Field(default_factory=datetime.now)
 
-# 5. Avisos
+class MaterialRepository(MongoBaseModel):
+    """
+    Um documento único por CÓDIGO DE DISCIPLINA.
+    Estrutura:
+    {
+       "codigo_disciplina": "FEN06-05080",
+       "acervo": {
+           "2025_1": {
+               "ID_DO_PROFESSOR_A": [Arquivo1, Arquivo2],
+               "ID_DO_PROFESSOR_B": [Arquivo3]
+           },
+           "2024_2": { ... }
+       }
+    }
+    """
+    codigo_disciplina: str
+    # Dict[Semestre, Dict[ProfessorID, List[Arquivos]]]
+    acervo: Dict[str, Dict[str, List[ArquivoMaterial]]] = {}
+
+# --- 4. Avisos ---
 class WarningType(str, Enum):
-    GERAL = "geral"
-    DISCIPLINA = "disciplina"
+    GERAL = "geral"           # Para todo o site
+    DISCIPLINA = "disciplina" # Para uma matéria específica
     URGENCIA = "urgencia"
-    OPORTUNIDADE = "oportunidade"
+    OPORTUNIDADE = "oportunidade" # Estágios, IC, etc.
 
 class WarningModel(MongoBaseModel):
     tipo: WarningType
-    disciplina_id: Optional[PyObjectId] = None # Null se for aviso geral da UERJ
-    autor_id: PyObjectId # Quem criou o aviso
+    disciplina_id: Optional[PyObjectId] = None
+    autor_id: PyObjectId
     titulo: str
     mensagem: str
+    validade: Optional[datetime] = None # Data para o aviso sumir (opcional)
     created_at: datetime = Field(default_factory=datetime.now)
