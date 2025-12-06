@@ -1,8 +1,3 @@
-* /* No seu novo main.css */
-
-/* Reset básico para melhor controle de layout */
-/* No seu main.css */
-
 /* Reset básico para melhor controle de layout */
 * {
     box-sizing: border-box;
@@ -55,19 +50,20 @@ body {
     margin-bottom: 30px; /* Espaço antes do logo de baixo */
 }
 
+.login-container-cadastro {
+    width: 750px; /* Largura do formulário */
+    background-color: white;
+    padding: 30px 40px; /* Ajuste o padding para corresponder ao espaçamento da imagem */
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px; /* Espaço antes do logo de baixo */
+}
+
 h2 {
     text-align: center;
     font-size: 32px;
     color: #333;
     margin-bottom: 40px;
-}
-
-.form-group {
-    margin-bottom: 15px;
-}
-
-.form-group label {
-    display: none; /* Oculta visualmente os labels para usar placeholders */
 }
 
 /* Inputs com Ícones */
@@ -171,4 +167,102 @@ h2 {
 
 .espacamento {
     margin-top: 50px; /* Ajuste o valor conforme necessário */
+}
+
+/* Estilo para cada grupo de campo (label + input) */
+.form-group {
+    display: flex;
+    align-items: center; /* Alinha o label com o input verticalmente */
+    margin-bottom: 15px;
+}
+
+/* Container Principal do Formulário */
+form {
+    max-width: 1000px; /* Ajuste o tamanho máximo do formulário */
+    margin: 0 auto;
+    padding: 10px;
+    background-color: #fff; /* Fundo branco para a área do formulário */
+    /* Outros estilos de caixa e borda, se necessário */
+}
+
+/* Título */
+h2 {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+/* Estilo para o Layout de Duas Colunas */
+.form-grid {
+    display: flex; /* Habilita o Flexbox */
+    gap: 40px; /* Espaçamento entre as colunas */
+    justify-content: center;
+}
+
+/* Estilo básico das Colunas */
+.left-column,
+.right-column {
+    flex: 1; /* Faz com que as duas colunas ocupem espaço igual */
+    min-width: 300px; /* Garante que as colunas não fiquem muito estreitas */
+}
+
+.input-with-icon {
+    flex-grow: 1; /* Faz a caixinha de input preencher o espaço restante */
+    display: flex;
+}
+
+/* Estilo para as Labels */
+.form-group label {
+    width: 80px; /* Define uma largura fixa para o label */
+    text-align: left;
+    margin-right: 10px;
+    /* font-weight: bold;  */
+    /* Opcional: para destacar o texto da label */
+}
+
+/* Estilo para o container dos Inputs */
+.input-with-icon {
+    flex-grow: 1; /* Faz o input-with-icon preencher o restante do espaço */
+    display: flex;
+}
+
+/* Estilo dos Inputs */
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+    width: 100%; /* Ocupa todo o espaço disponível no input-with-icon */
+    padding: 10px;
+    border: 1px solid #ccc;
+    background-color: #f0f0f0; /* Cor de fundo cinza claro como na imagem */
+    /* Remove a borda se desejar um estilo mais limpo */
+}
+
+/* Estilo específico para os inputs de Período */
+.period-inputs input {
+    flex: 1; /* Faz com que os dois inputs (início/fim) ocupem o mesmo espaço */
+    /* Pode ser necessário ajustar o margin ou padding para garantir que não haja quebra de linha */
+}
+
+.period-inputs input:first-child {
+    margin-right: 5px; /* Espaço entre "início" e "fim" */
+}
+
+/* Estilo para telas menores (Responsividade) */
+@media (max-width: 768px) {
+    .form-grid {
+        flex-direction: column; /* Coloca as colunas uma abaixo da outra em telas menores */
+    }
+    
+    .left-column,
+    .right-column {
+        min-width: unset;
+    }
+}
+
+.form-container-wrapper {
+    max-width: 800px; /* Largura máxima para o formulário */
+    width: 900%; 
+    padding: 40px; /* Aumenta o padding para "aumentar o fundo branco" */
+    background-color: white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Sombra suave */
+    border-radius: 8px;
 }
