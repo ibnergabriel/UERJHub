@@ -1,12 +1,21 @@
 from fastapi import FastAPI
-from routes.alunos import router as alunos_router
-from routes.rid import router as rid_router
+from contextlib import asynccontextmanager
+from database import db
+from routes import auth
 
-app = FastAPI(title="Sistema RID - Faculdade")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Inicializa conexão ao iniciar o app
+    await db.connect()
+    yield
+    # Fecha conexão ao desligar
+    await db.close()
 
-app.include_router(alunos_router)
-app.include_router(rid_router)
+app = FastAPI(title="UERJHUB API", lifespan=lifespan)
+
+# Registrar rotas
+app.include_router(auth.router, prefix="/auth", tags=["Autenticação"])
 
 @app.get("/")
-def root():
-    return {"msg": "API da Faculdade funcionando!"}
+def read_root():
+    return {"message": "UERJHUB API is running!"}
