@@ -96,13 +96,24 @@ async def update_period_only(
     admin: User = Depends(get_current_admin)
 ):
     """
-    1. Atualiza 'periodo_atual' no Users.
-    2. Renomeia a chave em 'disciplinas_atuais' no Users.
-    3. Atualiza o campo 'semestre' na coleção Disciplines global.
+    1. Salva o semestre OFICIAL na coleção 'system_config' (FALTAVA ISSO).
+    2. Atualiza usuários e disciplinas (migração).
     """
     novo_semestre = payload.novo_semestre.strip()
     if not novo_semestre:
         raise HTTPException(400, "O semestre não pode ser vazio.")
+
+    # --- CORREÇÃO: Salvar na Configuração Global ---
+    config_col = db.get_collection("system_config")
+    await config_col.update_one(
+        {"key": "semestre_ativo"},
+        {"$set": {"valor": novo_semestre}},
+        upsert=True # Cria se não existir
+    )
+    # ------------------------------------------------
+
+    users_col = db.get_collection("users")
+    disc_col = db.get_collection("disciplines")
 
     users_col = db.get_collection("users")
     disc_col = db.get_collection("disciplines")

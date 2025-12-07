@@ -1,7 +1,7 @@
 # backend/routes/auth.py
 import traceback
 from typing import List
-
+from services.utils import get_system_semester
 import bcrypt
 from bson import ObjectId
 from database import db
@@ -109,7 +109,7 @@ async def register(
         hashed = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
 
         # 3. Busca o semestre ativo no sistema (ex: "2025.1")
-        semestre_inicial = await get_active_semester()
+        semestre_inicial = await get_system_semester()
 
         # 4. Cria Objeto Usuário
         new_user = User(
@@ -148,117 +148,105 @@ async def upload_rid_grade(
     arquivo: UploadFile = File(...),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Lê o RID, sincroniza a grade:
-    1. Cria/Vincula turmas novas.
-    2. REMOVE o aluno de turmas que não estão mais no arquivo (Canceladas/Mudança de turma).
-    3. Atualiza o perfil do usuário.
-    """
     try:
-        # 1. Processa o PDF
+        # 1. Pega a configuração GLOBAL do Admin
+        semestre_sistema = await get_system_semester()
+
+        # 2. Processa o PDF
         rid_bytes = await arquivo.read()
-        # Chama sua função de extração
-        dict_atuais = UERJExtractor.parse_rid(rid_bytes) 
+        dict_extracted = UERJExtractor.parse_rid(rid_bytes) 
+        # O extractor retorna algo como: { "2024.2": [list...] } ou { "Atual": [...] }
 
-        if not dict_atuais:
-            raise HTTPException(400, "Não foi possível ler as disciplinas do arquivo.")
+        if not dict_extracted:
+            raise HTTPException(400, "Não foi possível ler as disciplinas.")
 
-        # Processa Disciplinas
+        # 3. UNIFICAÇÃO: Ignora a chave de semestre do PDF e usa a do SISTEMA.
+        # Pegamos a primeira lista de disciplinas que encontrarmos no arquivo
+        lista_disciplinas_pdf = []
+        for sem_key, lista in dict_extracted.items():
+            if lista:
+                lista_disciplinas_pdf = lista
+                break
+        
+        # Se o PDF estiver vazio
+        if not lista_disciplinas_pdf:
+             raise HTTPException(400, "Nenhuma disciplina encontrada no PDF.")
+
+        # --- LÓGICA DE ATUALIZAÇÃO ---
         disc_col = db.get_collection("disciplines")
         user_col = db.get_collection("users")
         user_id = ObjectId(current_user.id)
         
-        atuais_final = {}
-        periodo_detectado = None
+        objs_semestre_user = []
+        ids_novos = set()
 
-        # Vamos processar semestre por semestre 
-        for semestre, lista_novas in dict_atuais.items():
-            if not periodo_detectado: periodo_detectado = semestre
+        # Mapeia IDs antigos DESTE semestre específico (para saber se o aluno saiu de alguma)
+        ids_antigos = set()
+        if current_user.disciplinas_atuais and semestre_sistema in current_user.disciplinas_atuais:
+            for d_antiga in current_user.disciplinas_atuais[semestre_sistema]:
+                gid = d_antiga.get("disciplina_id") if isinstance(d_antiga, dict) else d_antiga.disciplina_id
+                if gid: ids_antigos.add(str(gid))
 
-            # --- PASSO A: Mapear o estado ATUAL (Antigo) do usuário neste semestre ---
-            ids_antigos = set()
-            if current_user.disciplinas_atuais and semestre in current_user.disciplinas_atuais:
-                for d_antiga in current_user.disciplinas_atuais[semestre]:
-                    # Recupera o ID da turma global se existir
-                    # Verifica se é dict ou objeto pydantic
-                    gid = d_antiga.get("disciplina_id") if isinstance(d_antiga, dict) else d_antiga.disciplina_id
-                    if gid:
-                        ids_antigos.add(str(gid))
-
-            # --- PASSO B: Processar o NOVO arquivo e gerar IDs Globais ---
-            ids_novos = set()
-            objs_semestre_user = []
-
-            for item in lista_novas:
-                codigo_user = item["codigo"].strip().upper()
-                turma_user = str(item.get("turma", "1")).strip().upper()
-                if turma_user.isdigit(): turma_user = str(int(turma_user))
-
-                # 1. Busca/Cria a Turma Global no banco
-                gid_str = await get_or_create_global_id(
-                    codigo=codigo_user, 
-                    nome=item["nome"],
-                    turma=turma_user, 
-                    semestre=semestre,
-                    horario=item.get("horario", []) 
-                )
-                
-                if gid_str:
-                    ids_novos.add(gid_str)
-                    
-                    # 2. Garante que o aluno está nessa turma (Entrar/Manter)
-                    await disc_col.update_one(
-                        {"_id": ObjectId(gid_str)},
-                        {"$addToSet": {"membros": user_id}}
-                    )
-
-                # 3. Monta o objeto para salvar no perfil do usuário
-                d_obj = DisciplinaAluno(
-                    codigo=codigo_user,
-                    nome=item["nome"].strip(),
-                    turma=turma_user,
-                    horario=item.get("horario", []),
-                    nota=None,
-                    status="Cursando",
-                    disciplina_id=gid_str
-                )
-                objs_semestre_user.append(d_obj.model_dump())
-
-            # --- PASSO C: Remover das turmas antigas ---
-            # Se o ID estava na lista antiga mas NÃO está na nova, o aluno saiu da turma.
-            ids_para_sair = ids_antigos - ids_novos
+        # Processa as novas
+        for item in lista_disciplinas_pdf:
+            codigo = item["codigo"].strip().upper()
+            turma = str(item.get("turma", "1")).strip()
             
-            if ids_para_sair:
-                oids_para_sair = [ObjectId(i) for i in ids_para_sair]
-                
-                await disc_col.update_many(
-                    {"_id": {"$in": oids_para_sair}},
-                    {"$pull": {"membros": user_id}} # $pull remove o item do array
-                )        
+            # CRIA/BUSCA TURMA GLOBAL USANDO O SEMESTRE DO SISTEMA
+            gid_str = await get_or_create_global_id(
+                codigo=codigo, 
+                nome=item["nome"],
+                turma=turma, 
+                semestre=semestre_sistema, # <--- FORÇA O SEMESTRE GLOBAL
+                horario=item.get("horario", []) 
+            )
+            
+            if gid_str:
+                ids_novos.add(gid_str)
+                # Adiciona aluno na turma global
+                await disc_col.update_one(
+                    {"_id": ObjectId(gid_str)},
+                    {"$addToSet": {"membros": user_id}}
+                )
 
-            # Atualiza a lista final deste semestre
-            atuais_final[semestre] = objs_semestre_user
+            # Objeto Local do Usuário
+            d_obj = DisciplinaAluno(
+                codigo=codigo,
+                nome=item["nome"].strip(),
+                turma=turma,
+                horario=item.get("horario", []),
+                nota=None,
+                status="Cursando",
+                disciplina_id=gid_str
+            )
+            objs_semestre_user.append(d_obj.model_dump())
 
-        # 4. Atualiza o Usuário no Banco (Sobrescreve com a lista nova e limpa)
-        update_data = {
-            # Nota: Usamos $set com a chave específica do semestre para não apagar 
-            # semestres anteriores caso a estrutura mude, ou substituímos tudo se for o desejo.
-            # Aqui vamos substituir o objeto disciplinas_atuais inteiro para garantir consistência.
-            "disciplinas_atuais": atuais_final 
-        }
-        if periodo_detectado:
-            update_data["periodo_atual"] = periodo_detectado
+        # Remove aluno das turmas que ele saiu (que estavam no banco mas não estão no PDF)
+        ids_para_sair = ids_antigos - ids_novos
+        if ids_para_sair:
+            await disc_col.update_many(
+                {"_id": {"$in": [ObjectId(i) for i in ids_para_sair]}},
+                {"$pull": {"membros": user_id}}
+            )
+
+        # SALVA NO USUÁRIO
+        # Preserva histórico de outros semestres se houver, mas atualiza o ATUAL
+        disciplinas_atuais_atualizadas = current_user.disciplinas_atuais or {}
+        disciplinas_atuais_atualizadas[semestre_sistema] = objs_semestre_user
 
         await user_col.update_one(
             {"_id": user_id},
-            {"$set": update_data}
+            {
+                "$set": {
+                    "disciplinas_atuais": disciplinas_atuais_atualizadas,
+                    "periodo_atual": semestre_sistema # Garante que o usuário está no semestre certo
+                }
+            }
         )
 
         return {
-            "message": "Grade sincronizada com sucesso!",
-            "turmas_adicionadas": len(ids_novos),
-            "turmas_removidas": len(ids_para_sair) if 'ids_para_sair' in locals() else 0,
-            "periodo": periodo_detectado
+            "message": f"Grade importada para o semestre {semestre_sistema}!",
+            "turmas_qtd": len(objs_semestre_user)
         }
 
     except Exception as e:
