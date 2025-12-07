@@ -92,7 +92,6 @@ async def register(
     email: str = Form(...),
     senha: str = Form(...),
     token: str = Form(...), # <--- NOVO CAMPO OBRIGATÓRIO
-    rid: UploadFile = File(...)
 ):
     # 1. VALIDAÇÃO DO TOKEN ANTES DE TUDO
     is_valid = await verify_and_delete_token(email, token)
