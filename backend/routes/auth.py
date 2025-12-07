@@ -23,7 +23,7 @@ router = APIRouter()
 class TokenRequest(BaseModel):
     email: EmailStr
 
-# --- HELPER (Mantido do original) ---
+# --- HELPER ---
 async def get_or_create_global_id(codigo: str, nome: str, turma: str, semestre: str, horario: List[str]) -> str:
     try:
         coll = db.get_collection("disciplines")
@@ -55,7 +55,7 @@ async def get_or_create_global_id(codigo: str, nome: str, turma: str, semestre: 
 
 
 # ==========================================
-# 🚀 NOVA ROTA 1: SOLICITAR TOKEN
+# 🚀 ROTA 1: SOLICITAR TOKEN
 # ==========================================
 @router.post("/request-token")
 async def request_token(payload: TokenRequest):
@@ -84,42 +84,43 @@ async def request_token(payload: TokenRequest):
 
 
 # ==========================================
-# 🚀 ROTA 2: CADASTRO FINAL (MODIFICADA)
+# 🚀 ROTA 2: CADASTRO FINAL 
 # ==========================================
 @router.post("/register", response_model=User, status_code=201)
 async def register(
     nome: str = Form(...),
     email: str = Form(...),
     senha: str = Form(...),
-    token: str = Form(...), # <--- NOVO CAMPO OBRIGATÓRIO
+    token: str = Form(...),
+    
 ):
-    # 1. VALIDAÇÃO DO TOKEN ANTES DE TUDO
+    # 1. VALIDAÇÃO DO TOKEN
     is_valid = await verify_and_delete_token(email, token)
     if not is_valid:
         raise HTTPException(401, "Token inválido ou expirado.")
 
-    # Daqui pra baixo, segue a lógica original de processar RID
     try:
         users_col = db.get_collection("users")
         
-        # Redundância de segurança: checa duplicidade de novo
         if await users_col.find_one({"email": email}):
             raise HTTPException(400, "Email já cadastrado.")
 
         # 2. Hash da senha
         hashed = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
 
-        # 3. Cria Objeto Usuário (Limpo)
+        # 3. Busca o semestre ativo no sistema (ex: "2025.1")
+        semestre_inicial = await get_active_semester()
+
+        # 4. Cria Objeto Usuário
         new_user = User(
             nome=nome,
             email=email,
             senha_hash=hashed,
-            disciplinas_atuais={}, # Começa vazio
-            historico={},          # Começa vazio
-            periodo_atual=None     # Será definido ao importar o RID
+            disciplinas_atuais={}, # Começa vazio, importa depois
+            historico={},          
+            periodo_atual=semestre_inicial # Já nasce no semestre certo
         )
 
-        # 4. Salva no Banco
         res = await users_col.insert_one(new_user.model_dump(by_alias=True, exclude=["id"]))
         user_id = res.inserted_id
         
@@ -129,7 +130,10 @@ async def register(
         traceback.print_exc()
         raise HTTPException(500, f"Erro interno: {str(e)}")
 
-# ROTA 2: MEU PERFIL
+
+# ==========================================
+# ROTA MEU PERFIL
+# ==========================================
 @router.get("/me", response_model=User, response_model_exclude={"senha_hash"})
 async def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
@@ -225,8 +229,6 @@ async def upload_rid_grade(
             ids_para_sair = ids_antigos - ids_novos
             
             if ids_para_sair:
-                print(f"Saindo das turmas: {ids_para_sair}")
-                # Converte strings para ObjectIds para a query
                 oids_para_sair = [ObjectId(i) for i in ids_para_sair]
                 
                 await disc_col.update_many(
@@ -302,3 +304,42 @@ async def upload_historico(
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(500, f"Erro: {str(e)}")
+    
+@router.delete("/me/disciplinas-atuais")
+async def limpar_minhas_disciplinas(current_user: User = Depends(get_current_user)):
+    """
+    Remove o aluno de todas as turmas atuais e limpa sua grade.
+    """
+    try:
+        user_col = db.get_collection("users")
+        disc_col = db.get_collection("disciplines")
+        user_id = ObjectId(current_user.id)
+
+        # 1. Encontrar IDs das turmas atuais para remover o aluno da lista de membros
+        ids_para_sair = []
+        if current_user.disciplinas_atuais:
+            for sem, lista in current_user.disciplinas_atuais.items():
+                for disc in lista:
+                    # Verifica se é dict ou objeto
+                    gid = disc.get("disciplina_id") if isinstance(disc, dict) else disc.disciplina_id
+                    if gid:
+                        ids_para_sair.append(ObjectId(gid))
+        
+        # 2. Remover aluno da coleção 'disciplines' (Global)
+        if ids_para_sair:
+            await disc_col.update_many(
+                {"_id": {"$in": ids_para_sair}},
+                {"$pull": {"membros": user_id}}
+            )
+
+        # 3. Limpar o perfil do usuário
+        await user_col.update_one(
+            {"_id": user_id},
+            {"$set": {"disciplinas_atuais": {}}}
+        )
+
+        return {"message": "Todas as disciplinas foram removidas com sucesso."}
+
+    except Exception as e:
+        print(f"Erro ao limpar disciplinas: {e}")
+        raise HTTPException(500, "Erro ao remover disciplinas.")

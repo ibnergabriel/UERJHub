@@ -45,18 +45,20 @@ class Discipline(MongoBaseModel):
     whatsapp_link: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.now)
 
-class User(MongoBaseModel):
+class User(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
     nome: str
     email: EmailStr
     senha_hash: str
-    disciplinas_atuais: Dict[str, List[DisciplinaAluno]] = {} 
-    historico: Dict[str, List[DisciplinaAluno]] = {}          
+    role: str = "student" # <--- NOVO CAMPO (student ou admin)
     # periodo_atual: str = "2025.1"
+    disciplinas_atuais: Dict[str, List[dict]] = {}
+    historico: Dict[str, List[dict]] = {}
     periodo_atual: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.now)
 
-# --- 2. Professores (Novo Formato) ---
+# --- 2. Professores  ---
 class Professor(MongoBaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
     nome: str
     email: EmailStr
     departamento: str
@@ -65,6 +67,10 @@ class Professor(MongoBaseModel):
     feedbacks: List[Feedback] = []
     created_at: datetime = Field(default_factory=datetime.now)
 
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        
 # --- 3. Materiais (Estrutura de Repositório) ---
 class MaterialTipo(str, Enum):
     PDF = "PDF"
