@@ -109,6 +109,17 @@
             margin-bottom: 15px;
         }
         .btn-toggle-upload:hover { background: #f0f4ff; }
+
+        /* Botão Genérico reutilizado do CSS principal */
+        .btn-cadastrar {
+            background: #5271ff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .btn-cadastrar:hover { background: #405bd4; }
     </style>
 </head>
 <body>
@@ -126,12 +137,30 @@
         </div>
 
         <div class="tabs">
-            <button class="tab-btn active" onclick="openTab('atuais')">Disciplinas Atuais</button>
-            <button class="tab-btn" onclick="openTab('historico')">Histórico Completo</button>
+            <button class="tab-btn active" onclick="openTab('atuais')">Disciplinas em curso</button>
+            <button class="tab-btn" onclick="openTab('historico')">Disciplinas já cursadas</button>
         </div>
 
         <div id="atuais" class="tab-content active">
-            <h3>Neste Semestre</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>Neste Semestre</h3>
+                <button class="btn-toggle-upload" onclick="toggleUploadRID()">
+                    <i class="fas fa-sync-alt"></i> Importar disciplinas em curso
+                </button>
+            </div>
+
+            <div id="ridAlert" style="display:none;" class="upload-area">
+                <h4><i class="fas fa-file-pdf" style="color: #5271ff;"></i> Importar disciplinas em curso </h4>
+                <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">
+                    Envie suas <b> Disciplinas em Curso </b> em PDF, obtidas no aluno online, para atualizar suas matérias e horários.
+                </p>
+                <input type="file" id="ridFile" accept=".pdf" style="margin-bottom: 10px;">
+                <br>
+                <button class="btn-cadastrar" style="width: auto; padding: 8px 20px; font-size: 0.9em;" onclick="enviarRID()">
+                    Atualizar Grade
+                </button>
+            </div>
+
             <div id="listaAtuais">
                 <p style="color: #666; font-style: italic;">Carregando disciplinas...</p>
             </div>
@@ -140,7 +169,7 @@
         <div id="historico" class="tab-content">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h3>Disciplinas Cursadas</h3>
-                <button class="btn-toggle-upload" onclick="toggleUploadArea()">
+                <button class="btn-toggle-upload" onclick="toggleUploadHistorico()">
                     <i class="fas fa-sync-alt"></i> Atualizar Histórico
                 </button>
             </div>
@@ -190,17 +219,17 @@
                     document.getElementById('userPeriod').innerText = user.periodo_atual || "Não definido";
 
                     // Preenche Disciplinas Atuais
-                    if (user.disciplinas_atuais) {
+                    if (user.disciplinas_atuais && user.periodo_atual) {
                         renderizarAtuais(user.disciplinas_atuais, user.periodo_atual);
                     } else {
-                        document.getElementById('listaAtuais').innerHTML = "<p>Nenhuma disciplina atual encontrada.</p>";
+                        document.getElementById('listaAtuais').innerHTML = "<p>Nenhuma grade carregada para este período.</p>";
+                        // Abre a caixa de upload se não tiver nada
+                        document.getElementById('ridAlert').style.display = 'block';
                     }
 
                     // Preenche Histórico
                     if (!user.historico || Object.keys(user.historico).length === 0) {
-                        // Se não tem histórico, mostra a área de upload aberta por padrão
-                        document.getElementById('historicoAlert').style.display = 'block';
-                        document.getElementById('uploadTitle').innerText = "Histórico Pendente";
+                        document.getElementById('listaHistorico').innerHTML = "<p>Sem histórico importado.</p>";
                     } else {
                         renderizarHistorico(user.historico);
                     }
@@ -218,8 +247,6 @@
         // 3. RENDERIZAR DISCIPLINAS ATUAIS
         function renderizarAtuais(disciplinasDict, periodoAtual) {
             const container = document.getElementById('listaAtuais');
-            
-            // CORREÇÃO: Usando a variável correta 'disciplinasDict' (com 'a', não 'disciplines')
             const lista = disciplinasDict[periodoAtual];
             
             if (!lista || lista.length === 0) {
@@ -232,7 +259,10 @@
                 // Formata o horário se existir
                 let horarioHtml = "";
                 if (d.horario && d.horario.length > 0) {
-                    horarioHtml = `<div style="font-size: 0.85em; color: #666; margin-top: 4px;"><i class="far fa-clock"></i> ${d.horario.join(' | ')}</div>`;
+                    // Ordena horários visualmente se vierem bagunçados (opcional)
+                    horarioHtml = `<div style="font-size: 0.85em; color: #666; margin-top: 4px;">
+                        <i class="far fa-clock"></i> ${d.horario.join(' | ')}
+                    </div>`;
                 }
                 
                 const turmaStr = d.turma ? ` - Turma ${d.turma}` : "";
@@ -256,7 +286,6 @@
             const container = document.getElementById('listaHistorico');
             container.innerHTML = "";
             
-            // Ordena semestres do mais recente para o mais antigo
             const semestres = Object.keys(historicoDict).sort().reverse();
 
             semestres.forEach(sem => {
@@ -295,7 +324,6 @@
 
             try {
                 const btn = document.querySelector('#historicoAlert button');
-                const textoOriginal = btn.innerText;
                 btn.innerText = "Processando...";
                 btn.disabled = true;
                 
@@ -316,24 +344,59 @@
                 console.error(e);
                 alert("Erro de conexão com o servidor.");
             } finally {
-                // Se der erro, volta o botão ao normal (se der certo, a página recarrega)
                 const btn = document.querySelector('#historicoAlert button');
-                if(btn) {
-                    btn.innerText = "Enviar Arquivo";
-                    btn.disabled = false;
-                }
+                if(btn) { btn.innerText = "Enviar Arquivo"; btn.disabled = false; }
             }
         }
 
-        // 6. UTILITÁRIOS
-        function toggleUploadArea() {
-            const area = document.getElementById('historicoAlert');
-            if (area.style.display === 'none') {
-                area.style.display = 'block';
-                document.getElementById('uploadTitle').innerText = "Atualizar Histórico";
-            } else {
-                area.style.display = 'none';
+        // 6. ENVIAR PDF DO RID (NOVA FUNÇÃO)
+        async function enviarRID() {
+            const fileInput = document.getElementById('ridFile');
+            const file = fileInput.files[0];
+
+            if (!file) return alert("Selecione o PDF do RID.");
+
+            const formData = new FormData();
+            formData.append('arquivo', file);
+
+            try {
+                const btn = document.querySelector('#ridAlert button');
+                btn.innerText = "Lendo PDF...";
+                btn.disabled = true;
+                
+                // Rota nova que criamos no backend
+                const response = await fetch('http://localhost:8000/auth/me/importar-rid', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    alert(`Grade importada! ${data.disciplinas_count || ''} disciplinas encontradas.`);
+                    location.reload(); 
+                } else {
+                    const err = await response.json();
+                    alert(`Erro: ${err.detail || "Falha ao ler o RID."}`);
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Erro de conexão com o servidor.");
+            } finally {
+                const btn = document.querySelector('#ridAlert button');
+                if(btn) { btn.innerText = "Atualizar Grade"; btn.disabled = false; }
             }
+        }
+
+        // 7. UTILITÁRIOS
+        function toggleUploadHistorico() {
+            const area = document.getElementById('historicoAlert');
+            area.style.display = area.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        function toggleUploadRID() {
+            const area = document.getElementById('ridAlert');
+            area.style.display = area.style.display === 'none' ? 'block' : 'none';
         }
 
         window.openTab = function(tabName) {
