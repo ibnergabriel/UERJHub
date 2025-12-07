@@ -3,114 +3,151 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cadastro UERJHUB</title>
-    <link rel="stylesheet" href="./css/main.css"> 
+    <title>Criar Conta - UERJHUB</title>
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,600,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     
     <style>
-        /* Estilos mantidos e adicionados para o Token */
-        .file-upload-label {
-            display: block; margin-bottom: 5px; font-size: 0.9em; color: #333; font-weight: bold;
+        /* --- ESTILOS PADRONIZADOS (Igual ao Login) --- */
+        * { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
+        
+        body {
+            font-family: 'Open Sans', sans-serif;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            
+            /* Fundo UERJ com sobreposição azulada */
+            background: linear-gradient(rgba(0, 50, 100, 0.6), rgba(0, 50, 100, 0.6)), 
+                        url('images/v105_14.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
         }
-        .file-input {
-            width: 100%; padding: 10px; margin-bottom: 15px; background: #f1f1f1;
-            border-radius: 5px; border: 1px solid #ddd;
+
+        /* CARD CENTRALIZADO */
+        .login-card {
+            background-color: white;
+            width: 100%;
+            max-width: 420px; /* Um pouco mais largo que o login pois tem mais campos */
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            text-align: center;
+            max-height: 90vh; /* Evita cortar em telas pequenas */
+            overflow-y: auto; /* Rolagem se necessário */
         }
-        .warning-text {
-            font-size: 0.8em; color: #666; margin-top: -10px; margin-bottom: 15px; display: block;
+
+        .login-card img.logo { width: 70px; margin-bottom: 10px; }
+        .login-card h2 { color: #333; margin-bottom: 5px; font-weight: 700; }
+        .login-card p.subtitle { color: #777; font-size: 0.9em; margin-bottom: 25px; }
+
+        /* INPUTS */
+        .input-group { position: relative; margin-bottom: 15px; text-align: left; }
+        .input-group i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #888; }
+        
+        .input-group input {
+            width: 100%;
+            padding: 12px 15px 12px 45px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            background: #f9f9f9;
+            transition: 0.3s;
         }
-        /* Classe para esconder passos */
+        .input-group input:focus { border-color: #004aad; background: #fff; }
+
+        /* BOTÕES */
+        .btn {
+            width: 100%; padding: 12px; border: none; border-radius: 8px;
+            font-size: 1rem; font-weight: 600; cursor: pointer; transition: 0.2s;
+            margin-bottom: 10px;
+        }
+        .btn-primary { background-color: #004aad; color: white; }
+        .btn-primary:hover { background-color: #003380; transform: translateY(-2px); }
+        
+        .btn-outline { background-color: transparent; border: 2px solid #ddd; color: #666; }
+        .btn-outline:hover { border-color: #004aad; color: #004aad; }
+
+        /* UTILITÁRIOS */
         .hidden { display: none; }
+        .highlight-email { color: #004aad; font-weight: bold; background: #eef4ff; padding: 2px 6px; border-radius: 4px; }
+        small.error-msg { color: #d9534f; font-size: 0.8em; display: none; margin-top: 5px;}
     </style>
 </head>
 <body>
-    <header class="px-5 py-4" style="background: url('images/v105_14.png') no-repeat center center; background-size: cover; height: 30vh;" >
-        <span class="auth-title">Cadastro</span>
-    </header>
-    
-    <div class="espacamento"></div>
-    
-    <div class="login-container" style="margin-top: -50px;">
-        <h2>Crie sua conta</h2>
-        <p style="text-align: center; color: #666; margin-bottom: 20px;">Aluno de Graduação</p>
+
+    <div class="login-card">
+        <img src="images/v105_24.png" alt="Logo UERJ" class="logo">
+        <h2>Criar Conta</h2>
+        <p class="subtitle">Aluno de Graduação</p>
 
         <div id="step1-container">
-            <p style="font-size: 0.9rem; text-align: center; margin-bottom: 15px;">
+            <p style="font-size: 0.9rem; margin-bottom: 20px; line-height: 1.5;">
                 Digite seu e-mail institucional para receber o código de verificação.
             </p>
-            <div class="form-group">
-                <div class="input-with-icon">
-                    <span class="icon-background icon-left"><i class="fas fa-envelope"></i></span>
-                    <input type="email" id="emailStep1" placeholder="Email (@graduacao.uerj.br)" required>
+            
+            <form onsubmit="solicitarToken(event)">
+                <div class="input-group">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="emailStep1" placeholder="seu_email@graducao.uerj.br" required>
                 </div>
-            </div>
-            <div class="buttons-group">
-                <button type="button" class="btn-entrar" onclick="solicitarToken()" id="btnSolicitar">
-                    Receber Código
-                </button>
-                <button type="button" class="btn-cadastrar" onclick="window.location.href='login.html'">
-                    Voltar
-                </button>
-            </div>
+                
+                <button type="submit" class="btn btn-primary" id="btnSolicitar">RECEBER CÓDIGO</button>
+                <button type="button" class="btn btn-outline" onclick="window.location.href='login.html'">JÁ TENHO CONTA</button>
+            </form>
         </div>
 
-        <form id="cadastroFormStep2" class="hidden">
+        <form id="cadastroFormStep2" class="hidden" onsubmit="finalizarCadastro(event)">
             
-            <p style="text-align: center; font-size: 0.9em; color: green; margin-bottom: 15px;">
-                Código enviado para: <b id="emailDisplay"></b>
+            <p style="font-size: 0.85em; color: green; margin-bottom: 20px;">
+                Código enviado para:<br>
+                <span id="emailDisplay" class="highlight-email"></span>
             </p>
             
             <input type="hidden" id="emailFinal" name="email">
 
-            <div class="form-group">
-                <div class="input-with-icon">
-                    <span class="icon-background icon-left"><i class="fas fa-key"></i></span>
-                    <input type="text" id="token" name="token" placeholder="Código de 6 dígitos" maxlength="6" required>
-                </div>
+            <div class="input-group">
+                <i class="fas fa-key"></i>
+                <input type="text" id="token" name="token" placeholder="Código (6 dígitos)" maxlength="6" required>
             </div>
 
-            <div class="form-group">
-                <div class="input-with-icon">
-                    <span class="icon-background icon-left"><i class="fas fa-user"></i></span>
-                    <input type="text" id="nome" name="nome" placeholder="Nome Completo" required>
-                </div>
+            <div class="input-group">
+                <i class="fas fa-user"></i>
+                <input type="text" id="nome" name="nome" placeholder="Nome Completo" required>
             </div>
             
-            <div class="form-group">
-                <div class="input-with-icon">
-                    <span class="icon-background icon-left"><i class="fas fa-lock"></i></span>
-                    <input type="password" id="senha" name="senha" placeholder="Crie uma Senha" required>
-                </div>
+            <div class="input-group">
+                <i class="fas fa-lock"></i>
+                <input type="password" id="senha" name="senha" placeholder="Crie uma Senha" required>
             </div>
 
-            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-
-            <div class="buttons-group">
-                <button type="submit" class="btn-entrar" id="btnFinalizar">Confirmar Cadastro</button>
+            <div class="input-group">
+                <i class="fas fa-check-double"></i>
+                <input type="password" id="confirmaSenha" name="confirma_senha" placeholder="Confirme a Senha" required>
+                <small id="senhaErro" class="error-msg">As senhas não coincidem.</small>
             </div>
+
+            <button type="submit" class="btn btn-primary" id="btnFinalizar">FINALIZAR CADASTRO</button>
+            <button type="button" class="btn btn-outline" onclick="window.location.reload()">VOLTAR</button>
         </form>
-        
-        <div class="logo-bottom">
-            <img src="images/v105_24.png" alt="Logo UERJ">
-        </div>
     </div>
 
     <script>
-    const API_URL = "http://localhost:8000"; // Ajuste se necessário
+    const API_URL = "http://localhost:8000"; 
 
     // --- FUNÇÃO 1: Solicitar o Token ---
-    async function solicitarToken() {
+    async function solicitarToken(event) {
+        event.preventDefault();
+        
         const emailInput = document.getElementById('emailStep1');
         const btnSolicitar = document.getElementById('btnSolicitar');
         const email = emailInput.value.trim().toLowerCase();
 
-        if (!email) {
-            alert("Por favor, digite seu e-mail.");
-            return;
-        }
+        if (!email) return;
 
-        // Feedback visual de carregamento
-        btnSolicitar.innerText = "Enviando...";
+        btnSolicitar.innerText = "ENVIANDO...";
         btnSolicitar.disabled = true;
 
         try {
@@ -123,15 +160,14 @@
             const data = await response.json();
 
             if (response.ok) {
-                // SUCESSO: Troca as telas
+                // SUCESSO
                 document.getElementById('step1-container').classList.add('hidden');
                 document.getElementById('cadastroFormStep2').classList.remove('hidden');
                 
-                // Preenche o e-mail no passo 2 automaticamente
                 document.getElementById('emailDisplay').innerText = email;
                 document.getElementById('emailFinal').value = email;
                 
-                alert("Código enviado! Verifique seu e-mail (inclusive Spam).");
+                alert("Código enviado! Verifique seu e-mail.");
             } else {
                 alert(`Erro: ${data.detail || "Falha ao enviar token"}`);
             }
@@ -140,44 +176,57 @@
             console.error(error);
             alert("Erro de conexão com o servidor.");
         } finally {
-            btnSolicitar.innerText = "Receber Código";
+            btnSolicitar.innerText = "RECEBER CÓDIGO";
             btnSolicitar.disabled = false;
         }
     }
 
     // --- FUNÇÃO 2: Finalizar Cadastro ---
-    document.getElementById('cadastroFormStep2').addEventListener('submit', async (event) => {
-        event.preventDefault(); // Impede refresh
+    async function finalizarCadastro(event) {
+        event.preventDefault();
+
+        // Validação de Senha no Front
+        const s1 = document.getElementById('senha').value;
+        const s2 = document.getElementById('confirmaSenha').value;
+        const erroMsg = document.getElementById('senhaErro');
+
+        if (s1 !== s2) {
+            erroMsg.style.display = 'block';
+            document.getElementById('confirmaSenha').focus();
+            return;
+        } else {
+            erroMsg.style.display = 'none';
+        }
 
         const btnFinalizar = document.getElementById('btnFinalizar');
-        btnFinalizar.innerText = "Cadastrando...";
+        btnFinalizar.innerText = "CADASTRANDO...";
         btnFinalizar.disabled = true;
 
-        // O FormData pega automaticamente todos os inputs com 'name' dentro do form (incluindo o arquivo RID)
         const form = document.getElementById('cadastroFormStep2');
         const formData = new FormData(form);
+        // O FormData pega: email (hidden), token, nome, senha, confirma_senha
 
         try {
             const response = await fetch(`${API_URL}/auth/register`, {
                 method: 'POST',
-                body: formData // Headers são automáticos para multipart/form-data
+                body: formData 
             });
 
             if (response.ok) {
-                alert("Cadastro realizado com sucesso! Você será redirecionado.");
+                alert("Cadastro realizado com sucesso! Faça login.");
                 window.location.href = 'login.html';
             } else {
                 const error = await response.json();
-                alert(`Erro no cadastro: ${error.detail}`);
+                alert(`Erro: ${error.detail}`);
             }
         } catch (error) {
             console.error(error);
             alert("Erro ao tentar cadastrar.");
         } finally {
-            btnFinalizar.innerText = "Confirmar Cadastro";
+            btnFinalizar.innerText = "FINALIZAR CADASTRO";
             btnFinalizar.disabled = false;
         }
-    });
+    }
     </script>
 </body>
 </html>
