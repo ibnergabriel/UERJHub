@@ -6,15 +6,21 @@ services:
     container_name: uerjhub_backend
     ports:
       - "8000:8000"
+    
+    # 👇 ADIÇÃO CRÍTICA: Ler o arquivo de senhas 👇
+    env_file:
+      - ./backend/.env
+    
+    # As variáveis aqui sobrescrevem o .env se houver conflito
     environment:
-      # --- O ENDEREÇO CERTO É ESTE: ---
       - MONGO_URL=mongodb://mongo_db:27017 
+    
     volumes:
       - ./backend/uploads:/app/backend/uploads
     depends_on:
       - mongo_db
 
-  mongo_db:  # <--- Este é o nome que o backend usa para achar o banco
+  mongo_db:
     image: mongo:latest
     container_name: uerjhub_mongo
     ports:

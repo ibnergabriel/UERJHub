@@ -1,12 +1,17 @@
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
 import os
+from contextlib import asynccontextmanager
+
+from dotenv import load_dotenv  # <--- ADICIONE ISSO
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+# Carrega variáveis antes de tudo
+load_dotenv()
 
 from database import db
 # Importa todas as rotas que criamos
-from routes import auth, disciplines, professors, materials, warnings, login
+from routes import auth, disciplines, login, materials, professors, warnings
 
 # Cria pasta de uploads se não existir
 UPLOAD_DIR = "uploads"
