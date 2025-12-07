@@ -146,13 +146,26 @@
                 const data = new Date(av.created_at).toLocaleDateString('pt-BR');
                 const tipoClass = `type-${av.tipo}`;
                 const bgClass = `bg-${av.tipo}`;
+                
+                // Pega o nome vindo do backend ou define um padrão
+                const autorNome = av.autor_nome || "Desconhecido";
 
                 const html = `
                     <div class="warning-card ${tipoClass}">
                         <span class="tag-type ${bgClass}">${av.tipo}</span>
+                        
                         <h3>${av.titulo}</h3>
-                        <p style="margin: 10px 0; color: #555;">${av.mensagem}</p>
-                        <small style="color: #999;">Postado em ${data}</small>
+                        
+                        <p style="margin: 15px 0; color: #555; line-height: 1.5;">${av.mensagem}</p>
+                        
+                        <div style="border-top: 1px solid #eee; padding-top: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 0.85em;">
+                            <span style="color: #0b84c8; font-weight: bold;">
+                                <i class="fas fa-user-circle"></i> ${autorNome}
+                            </span>
+                            <small style="color: #999;">
+                                <i class="far fa-clock"></i> ${data}
+                            </small>
+                        </div>
                     </div>
                 `;
                 container.innerHTML += html;

@@ -26,7 +26,7 @@ async def get_my_disciplines(current_user: User = Depends(get_current_user)):
 async def get_discipline_details(discipline_id: str, current_user: User = Depends(get_current_user)):
     try:
         coll = db.get_collection("disciplines")
-        # Busca pelo ID e garante que o aluno é membro (segurança)
+        # Busca pelo ID e garante que o aluno é membro
         turma = await coll.find_one({
             "_id": ObjectId(discipline_id),
             "membros": ObjectId(current_user.id)

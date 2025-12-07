@@ -51,7 +51,8 @@ class User(MongoBaseModel):
     senha_hash: str
     disciplinas_atuais: Dict[str, List[DisciplinaAluno]] = {} 
     historico: Dict[str, List[DisciplinaAluno]] = {}          
-    periodo_atual: str = "2025.1"
+    # periodo_atual: str = "2025.1"
+    periodo_atual: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.now)
 
 # --- 2. Professores (Novo Formato) ---

@@ -31,14 +31,40 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.05); height: 100%;
         }
 
-        /* Avisos */
-        .warning-item {
-            border-left: 4px solid #ff9800; background: #fff8e1;
-            padding: 10px; margin-bottom: 10px; border-radius: 4px;
+        /* --- NOVO ESTILO DOS AVISOS (Igual ao Mural) --- */
+        .warning-card {
+            background: white; 
+            border: 1px solid #eee;
+            border-left: 4px solid #5271ff; /* Azul da marca para avisos da turma */
+            padding: 15px; 
+            margin-bottom: 15px; 
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+            transition: 0.2s;
         }
+        .warning-card:hover { box-shadow: 0 4px 8px rgba(0,0,0,0.08); }
+
+        .warning-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .warning-title { font-weight: bold; color: #333; font-size: 1.1em; }
+        .warning-msg { color: #555; font-size: 0.95em; line-height: 1.4; margin-bottom: 12px; }
+
+        .warning-footer {
+            border-top: 1px solid #f0f0f0; padding-top: 8px;
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 0.85em; color: #888;
+        }
+        .author-tag { color: #5271ff; font-weight: 600; display: flex; align-items: center; gap: 5px; }
+        /* ----------------------------------------------- */
+
         .btn-action {
             background: #0b84c8; color: white; border: none; padding: 5px 10px;
             border-radius: 5px; cursor: pointer; font-size: 0.9em;
+        }
+
+        /* Estilo do input do formulário */
+        .form-input {
+            width: 100%; padding: 10px; margin-bottom: 10px;
+            border: 1px solid #ddd; border-radius: 5px; font-family: inherit;
         }
     </style>
 </head>
@@ -70,29 +96,33 @@
             
             <div class="section-box">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3><i class="fas fa-bullhorn"></i> Mural da Turma</h3>
+                    <h3><i class="fas fa-bullhorn" style="color: #5271ff;"></i> Mural da Turma</h3>
                     <button class="btn-action" onclick="toggleWarningForm()">+ Aviso</button>
                 </div>
 
-                <div id="newWarningForm" style="display:none; background:#f0f0f0; padding:15px; border-radius:8px; margin-bottom:15px;">
-                    <input type="text" id="avisoTitulo" placeholder="Assunto" style="width: 100%; padding: 8px; margin-bottom: 5px;">
-                    <textarea id="avisoMsg" placeholder="Mensagem..." style="width: 100%; padding: 8px; height: 60px; margin-bottom: 5px;"></textarea>
-                    <button onclick="postarAviso()" style="background:#28a745; color:white; border:none; padding:5px 15px; border-radius:4px; cursor:pointer;">Publicar</button>
+                <div id="newWarningForm" style="display:none; background:#f9f9f9; padding:15px; border-radius:8px; margin-bottom:15px; border: 1px solid #eee;">
+                    <input type="text" id="avisoTitulo" class="form-input" placeholder="Assunto (Ex: Prova remarcada)">
+                    <textarea id="avisoMsg" class="form-input" placeholder="Mensagem..." style="height: 60px;"></textarea>
+                    <div style="text-align: right;">
+                        <button onclick="postarAviso()" style="background:#28a745; color:white; border:none; padding:8px 20px; border-radius:4px; cursor:pointer;">Publicar</button>
+                    </div>
                 </div>
 
                 <div id="warningsList">
-                    <p>Carregando avisos...</p>
+                    <p style="text-align: center; color: #999;">Carregando avisos...</p>
                 </div>
             </div>
 
             <div class="section-box">
-                <h3><i class="fas fa-info-circle"></i> Detalhes</h3>
+                <h3><i class="fas fa-info-circle" style="color: #5271ff;"></i> Detalhes</h3>
                 <p style="margin-top: 10px;"><strong>Horário:</strong></p>
-                <div id="classSchedule" style="color:#555;">...</div>
+                <div id="classSchedule" style="color:#555; margin-bottom: 20px;">...</div>
 
-                <h3 style="margin-top: 30px;"><i class="fas fa-folder"></i> Materiais</h3>
-                <p style="font-size: 0.9em; color: #666;">Acesse o repositório de arquivos desta disciplina.</p>
-                <button onclick="window.location.href='Materiais.html'" class="btn-cadastrar" style="margin-top: 10px;">Ver Materiais</button>
+                <hr style="border: 0; border-top: 1px solid #eee;">
+
+                <h3 style="margin-top: 20px;"><i class="fas fa-folder" style="color: #5271ff;"></i> Materiais</h3>
+                <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">Acesse o repositório de arquivos desta disciplina.</p>
+                <button onclick="irParaMateriais()" class="btn-cadastrar" style="width: 100%;">Ver Materiais</button>
             </div>
         </div>
     </div>
@@ -101,7 +131,7 @@
         const token = localStorage.getItem('token');
         if (!token) window.location.href = 'login.html';
 
-        // 1. PEGAR ID DA URL (Ex: turma.html?id=123)
+        // 1. PEGAR ID DA URL
         const urlParams = new URLSearchParams(window.location.search);
         const disciplineId = urlParams.get('id');
 
@@ -113,7 +143,6 @@
         // 2. CARREGAR DADOS DA TURMA
         async function loadData() {
             try {
-                // Busca detalhes da turma
                 const res = await fetch(`http://localhost:8000/disciplines/${disciplineId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -121,7 +150,7 @@
                 if (res.ok) {
                     const turma = await res.json();
                     renderHeader(turma);
-                    loadWarnings(); // Carrega avisos DEPOIS de saber que a turma existe
+                    loadWarnings(); 
                 } else {
                     alert("Erro ao carregar turma ou acesso negado.");
                     window.location.href = 'disciplines.html';
@@ -133,12 +162,12 @@
             document.getElementById('className').innerText = turma.nome;
             document.getElementById('classCode').innerText = `${turma.codigo} - Turma ${turma.turma} (${turma.semestre})`;
             
-            // Horário
+            // Horário Formatado
             const horarioDiv = document.getElementById('classSchedule');
             if(turma.horario && turma.horario.length) {
-                horarioDiv.innerHTML = turma.horario.map(h => `<div>${h}</div>`).join('');
+                horarioDiv.innerHTML = turma.horario.map(h => `<div style="margin-bottom: 4px;"><i class="far fa-clock"></i> ${h}</div>`).join('');
             } else {
-                horarioDiv.innerText = "Sem horário definido";
+                horarioDiv.innerHTML = "<i>Sem horário definido</i>";
             }
 
             // WhatsApp
@@ -154,7 +183,7 @@
             }
         }
 
-        // 3. CARREGAR AVISOS DA TURMA
+        // 3. CARREGAR AVISOS DA TURMA (AGORA COM AUTOR)
         async function loadWarnings() {
             const list = document.getElementById('warningsList');
             try {
@@ -165,24 +194,42 @@
                 
                 list.innerHTML = "";
                 if(avisos.length === 0) {
-                    list.innerHTML = "<p style='color:#999'>Nenhum aviso no mural.</p>";
+                    list.innerHTML = `
+                        <div style="text-align:center; padding: 20px; color: #999;">
+                            <i class="far fa-comment-dots" style="font-size: 2em; margin-bottom: 10px;"></i>
+                            <p>Nenhum aviso postado ainda.</p>
+                        </div>`;
                     return;
                 }
 
                 avisos.forEach(av => {
                     const data = new Date(av.created_at).toLocaleDateString('pt-BR');
+                    
+                    // --- AQUI ESTÁ A MÁGICA: PEGAMOS O NOME VINDO DO BACKEND ---
+                    const autorNome = av.autor_nome || "Anônimo";
+
                     list.innerHTML += `
-                        <div class="warning-item">
-                            <strong>${av.titulo}</strong>
-                            <p style="margin: 5px 0;">${av.mensagem}</p>
-                            <small style="color:#888;">${data}</small>
+                        <div class="warning-card">
+                            <div class="warning-header">
+                                <span class="warning-title">${av.titulo}</span>
+                            </div>
+                            <p class="warning-msg">${av.mensagem}</p>
+                            
+                            <div class="warning-footer">
+                                <span class="author-tag">
+                                    <i class="fas fa-user-circle"></i> ${autorNome}
+                                </span>
+                                <span>
+                                    <i class="far fa-calendar-alt"></i> ${data}
+                                </span>
+                            </div>
                         </div>
                     `;
                 });
             } catch (e) { list.innerHTML = "Erro ao carregar avisos."; }
         }
 
-        // 4. AÇÕES (Editar Zap e Postar Aviso)
+        // 4. AÇÕES
         async function editWhatsApp() {
             const novoLink = prompt("Cole o link do grupo do WhatsApp:");
             if (!novoLink) return;
@@ -216,10 +263,10 @@
 
             const payload = {
                 tipo: "disciplina",
-                disciplina_id: disciplineId, // Usa o ID da URL
+                disciplina_id: disciplineId, 
                 titulo: titulo,
                 mensagem: msg,
-                autor_id: "temp"
+                autor_id: "temp" // Backend resolve quem é
             };
 
             try {
@@ -238,6 +285,11 @@
                     loadWarnings();
                 } else { alert("Erro ao publicar."); }
             } catch(e) { console.error(e); }
+        }
+
+        function irParaMateriais() {
+            // Passa o ID na URL para a próxima página saber qual pasta carregar
+            window.location.href = `Materiais.html?id=${disciplineId}`;
         }
 
         // Inicia

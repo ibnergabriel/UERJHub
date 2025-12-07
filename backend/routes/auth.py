@@ -107,20 +107,92 @@ async def register(
         if await users_col.find_one({"email": email}):
             raise HTTPException(400, "Email já cadastrado.")
 
-        # Processa RID
-        rid_bytes = await rid.read()
-        dict_atuais = UERJExtractor.parse_rid(rid_bytes)
+        # 2. Hash da senha
+        hashed = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
+
+        # 3. Cria Objeto Usuário (Limpo)
+        new_user = User(
+            nome=nome,
+            email=email,
+            senha_hash=hashed,
+            disciplinas_atuais={}, # Começa vazio
+            historico={},          # Começa vazio
+            periodo_atual=None     # Será definido ao importar o RID
+        )
+
+        # 4. Salva no Banco
+        res = await users_col.insert_one(new_user.model_dump(by_alias=True, exclude=["id"]))
+        user_id = res.inserted_id
+        
+        return await users_col.find_one({"_id": user_id})
+
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(500, f"Erro interno: {str(e)}")
+
+# ROTA 2: MEU PERFIL
+@router.get("/me", response_model=User, response_model_exclude={"senha_hash"})
+async def read_users_me(current_user: User = Depends(get_current_user)):
+    return current_user
+
+
+# ROTA 3: IMPORTAR DISCPLINAS EM CURSO
+# No topo do arquivo, garanta que Set está importado
+# from bson import ObjectId
+
+@router.post("/me/importar-rid")
+async def upload_rid_grade(
+    arquivo: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Lê o RID, sincroniza a grade:
+    1. Cria/Vincula turmas novas.
+    2. REMOVE o aluno de turmas que não estão mais no arquivo (Canceladas/Mudança de turma).
+    3. Atualiza o perfil do usuário.
+    """
+    try:
+        # 1. Processa o PDF
+        rid_bytes = await arquivo.read()
+        # Chama sua função de extração
+        dict_atuais = UERJExtractor.parse_rid(rid_bytes) 
+
+        if not dict_atuais:
+            raise HTTPException(400, "Não foi possível ler as disciplinas do arquivo.")
 
         # Processa Disciplinas
+        disc_col = db.get_collection("disciplines")
+        user_col = db.get_collection("users")
+        user_id = ObjectId(current_user.id)
+        
         atuais_final = {}
-        for semestre, lista in dict_atuais.items():
-            objs_semestre = []
-            for item in lista:
+        periodo_detectado = None
+
+        # Vamos processar semestre por semestre 
+        for semestre, lista_novas in dict_atuais.items():
+            if not periodo_detectado: periodo_detectado = semestre
+
+            # --- PASSO A: Mapear o estado ATUAL (Antigo) do usuário neste semestre ---
+            ids_antigos = set()
+            if current_user.disciplinas_atuais and semestre in current_user.disciplinas_atuais:
+                for d_antiga in current_user.disciplinas_atuais[semestre]:
+                    # Recupera o ID da turma global se existir
+                    # Verifica se é dict ou objeto pydantic
+                    gid = d_antiga.get("disciplina_id") if isinstance(d_antiga, dict) else d_antiga.disciplina_id
+                    if gid:
+                        ids_antigos.add(str(gid))
+
+            # --- PASSO B: Processar o NOVO arquivo e gerar IDs Globais ---
+            ids_novos = set()
+            objs_semestre_user = []
+
+            for item in lista_novas:
                 codigo_user = item["codigo"].strip().upper()
                 turma_user = str(item.get("turma", "1")).strip().upper()
                 if turma_user.isdigit(): turma_user = str(int(turma_user))
 
-                gid = await get_or_create_global_id(
+                # 1. Busca/Cria a Turma Global no banco
+                gid_str = await get_or_create_global_id(
                     codigo=codigo_user, 
                     nome=item["nome"],
                     turma=turma_user, 
@@ -128,6 +200,16 @@ async def register(
                     horario=item.get("horario", []) 
                 )
                 
+                if gid_str:
+                    ids_novos.add(gid_str)
+                    
+                    # 2. Garante que o aluno está nessa turma (Entrar/Manter)
+                    await disc_col.update_one(
+                        {"_id": ObjectId(gid_str)},
+                        {"$addToSet": {"membros": user_id}}
+                    )
+
+                # 3. Monta o objeto para salvar no perfil do usuário
                 d_obj = DisciplinaAluno(
                     codigo=codigo_user,
                     nome=item["nome"].strip(),
@@ -135,51 +217,89 @@ async def register(
                     horario=item.get("horario", []),
                     nota=None,
                     status="Cursando",
-                    disciplina_id=gid
+                    disciplina_id=gid_str
                 )
-                objs_semestre.append(d_obj)
-            atuais_final[semestre] = objs_semestre
+                objs_semestre_user.append(d_obj.model_dump())
 
-        # Cria Usuário
-        hashed = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
-        periodo_ref = list(atuais_final.keys())[0] if atuais_final else "2025.1"
+            # --- PASSO C: Remover das turmas antigas ---
+            # Se o ID estava na lista antiga mas NÃO está na nova, o aluno saiu da turma.
+            ids_para_sair = ids_antigos - ids_novos
+            
+            if ids_para_sair:
+                print(f"Saindo das turmas: {ids_para_sair}")
+                # Converte strings para ObjectIds para a query
+                oids_para_sair = [ObjectId(i) for i in ids_para_sair]
+                
+                await disc_col.update_many(
+                    {"_id": {"$in": oids_para_sair}},
+                    {"$pull": {"membros": user_id}} # $pull remove o item do array
+                )        
 
-        new_user = User(
-            nome=nome,
-            email=email,
-            senha_hash=hashed,
-            disciplinas_atuais=atuais_final,
-            historico={},
-            periodo_atual=periodo_ref
+            # Atualiza a lista final deste semestre
+            atuais_final[semestre] = objs_semestre_user
+
+        # 4. Atualiza o Usuário no Banco (Sobrescreve com a lista nova e limpa)
+        update_data = {
+            # Nota: Usamos $set com a chave específica do semestre para não apagar 
+            # semestres anteriores caso a estrutura mude, ou substituímos tudo se for o desejo.
+            # Aqui vamos substituir o objeto disciplinas_atuais inteiro para garantir consistência.
+            "disciplinas_atuais": atuais_final 
+        }
+        if periodo_detectado:
+            update_data["periodo_atual"] = periodo_detectado
+
+        await user_col.update_one(
+            {"_id": user_id},
+            {"$set": update_data}
         )
 
-        res = await users_col.insert_one(new_user.model_dump(by_alias=True, exclude=["id"]))
-        user_id = res.inserted_id
-        
-        # Matrícula
-        if atuais_final:
-            disc_col = db.get_collection("disciplines")
-            for semestre, lista_disciplinas in atuais_final.items():
-                for materia in lista_disciplinas:
-                    if materia.disciplina_id:
-                        await disc_col.update_one(
-                            {"_id": ObjectId(materia.disciplina_id)},
-                            {"$addToSet": {"membros": user_id}}
-                        )
-
-        return await users_col.find_one({"_id": user_id})
+        return {
+            "message": "Grade sincronizada com sucesso!",
+            "turmas_adicionadas": len(ids_novos),
+            "turmas_removidas": len(ids_para_sair) if 'ids_para_sair' in locals() else 0,
+            "periodo": periodo_detectado
+        }
 
     except Exception as e:
         traceback.print_exc()
-        raise HTTPException(500, f"Erro interno: {str(e)}")
+        raise HTTPException(500, f"Erro ao importar RID: {str(e)}")
 
-# As outras rotas (/me, /historico) continuam iguais...
-# ... (Cole o restante do seu arquivo auth.py original aqui para manter /me e /historico)
-@router.get("/me", response_model=User, response_model_exclude={"senha_hash"})
-async def read_users_me(current_user: User = Depends(get_current_user)):
-    return current_user
-
+# ROTA 4: ENVIAR HISTÓRICO
 @router.post("/me/historico")
-async def upload_historico(arquivo: UploadFile = File(...), current_user: User = Depends(get_current_user)):
-    # ... (mesma lógica do original)
-    pass
+async def upload_historico(
+    arquivo: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        hist_bytes = await arquivo.read()
+        dict_hist = UERJExtractor.parse_historico(hist_bytes)
+        
+        if not dict_hist:
+            raise HTTPException(400, "Não foi possível ler o histórico.")
+
+        historico_final = {}
+        for semestre, lista in dict_hist.items():
+            objs_semestre = []
+            for item in lista:
+                d_obj = DisciplinaAluno(
+                    codigo=item["codigo"].strip().upper(),
+                    nome=item["nome"].strip(),
+                    turma=None,
+                    horario=[],
+                    nota=item.get("nota"),
+                    status=item.get("status", "Cursado"),
+                    disciplina_id=None
+                )
+                objs_semestre.append(d_obj.model_dump())
+            historico_final[semestre] = objs_semestre
+
+        await db.get_collection("users").update_one(
+            {"_id": ObjectId(current_user.id)},
+            {"$set": {"historico": historico_final}}
+        )
+
+        return {"message": "Histórico importado!", "semestres": list(historico_final.keys())}
+
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(500, f"Erro: {str(e)}")
