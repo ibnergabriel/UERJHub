@@ -306,9 +306,11 @@
     // Função B: Apaga disciplinas (Perigo)
     async function zerarDisciplinas() {
         const confirmacao = confirm(
-            "⚠️ ATENÇÃO MÁXIMA!\n\n" +
-            "Você está prestes a REMOVER a grade horária atual de TODOS os alunos.\n" +
-            "Eles terão que importar o RID novamente.\n\n" +
+            "⚠️ PERIGO: RESET TOTAL DE SEMESTRE ⚠️\n\n" +
+            "Esta ação irá:\n" +
+            "1. Remover as disciplinas dos perfis de TODOS os alunos.\n" +
+            "2. APAGAR todas as turmas cadastradas no banco de dados.\n\n" +
+            "Você terá que importar as turmas novamente.\n\n" +
             "Tem certeza absoluta que deseja continuar?"
         );
 
@@ -316,26 +318,32 @@
 
         const btn = event.target;
         const textoOriginal = btn.innerHTML;
-        btn.innerHTML = "Apagando...";
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Apagando...';
         btn.disabled = true;
 
         try {
-            const res = await fetch('http://localhost:8000/admin/wipe-disciplines', {
+            // Passamos ?hard_delete=true para confirmar que queremos apagar as turmas globais
+            const res = await fetch('http://localhost:8000/admin/wipe-disciplines?hard_delete=true', {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
+            const data = await res.json();
+
             if (res.ok) {
-                const data = await res.json();
-                alert(`Limpeza concluída com sucesso!\nDisciplinas removidas de ${data.modified_count} alunos.`);
-                // Atualiza estatísticas (pode ter mudado contagem de turmas globais se implementado limpeza em cascata futura)
+                alert(
+                    `✅ Limpeza Concluída!\n\n` +
+                    `- ${data.users_affected}\n` +
+                    `- ${data.global_action}`
+                );
+                // Atualiza o dashboard para mostrar 0 turmas
                 loadDashboard(); 
             } else {
-                alert("Erro ao apagar disciplinas.");
+                alert("Erro ao apagar disciplinas: " + (data.detail || "Erro desconhecido"));
             }
         } catch (e) {
             console.error(e);
-            alert("Erro de conexão.");
+            alert("Erro de conexão com o servidor.");
         } finally {
             btn.innerHTML = textoOriginal;
             btn.disabled = false;

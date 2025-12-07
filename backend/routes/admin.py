@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Depends, HTTPException, Body, Query
 from database import db
 from security import get_current_admin
 from models import User
@@ -177,25 +177,41 @@ async def update_period_only(
 # ==========================================
 @router.delete("/wipe-disciplines")
 async def wipe_disciplines_only(
+    hard_delete: bool = Query(True, description="Se True, apaga as turmas do banco. Se False, apenas remove os alunos."),
     admin: User = Depends(get_current_admin)
 ):
+    """
+    Limpa os dados de disciplinas.
+    1. Remove as disciplinas 'Em Curso' dos perfis dos alunos (Sempre).
+    2. Se hard_delete=True: APAGA todas as disciplinas globais do banco.
+    3. Se hard_delete=False: Apenas remove os alunos das turmas (mantém as turmas vazias).
+    """
     users_col = db.get_collection("users")
     disc_col = db.get_collection("disciplines")
 
-    # 1. Limpa usuários
+    # 1. Limpa referência nos usuários (Isso sempre acontece)
     res_users = await users_col.update_many(
         {}, 
         {"$set": {"disciplinas_atuais": {}}}
     )
     
-    # 2. Limpa membros das turmas globais (Opcional, mas recomendado para consistência)
-    # Se ninguém mais está cursando, as turmas ficam vazias.
-    await disc_col.update_many(
-        {},
-        {"$set": {"membros": []}}
-    )
+    msg_disciplinas = ""
+
+    # 2. Decide o que fazer com a coleção global
+    if hard_delete:
+        # --- MODO DESTRUTIVO: Apaga os documentos da coleção ---
+        res_disc = await disc_col.delete_many({})
+        msg_disciplinas = f"{res_disc.deleted_count} turmas globais foram APAGADAS do sistema."
+    else:
+        # --- MODO SUAVE: Apenas esvazia a lista de chamada ---
+        res_disc = await disc_col.update_many(
+            {},
+            {"$set": {"membros": []}}
+        )
+        msg_disciplinas = f"{res_disc.modified_count} turmas foram esvaziadas (alunos removidos)."
 
     return {
-        "message": "Todas as disciplinas em curso foram removidas.",
-        "modified_count": res_users.modified_count
+        "message": "Limpeza concluída com sucesso.",
+        "users_affected": f"{res_users.modified_count} alunos resetados.",
+        "global_action": msg_disciplinas
     }
