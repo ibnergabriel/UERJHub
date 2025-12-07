@@ -1,16 +1,17 @@
-# backend/routes/auth.py
 import traceback
 from typing import List
 
 import bcrypt
 from bson import ObjectId
 from database import db
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Body, Depends
+from fastapi import (APIRouter, Body, Depends, File, Form, HTTPException,
+                     UploadFile)
 from models import DisciplinaAluno, Discipline, User
 from pydantic import BaseModel, EmailStr
 from security import get_current_user
 # Imports da NOVA lógica de autenticação
 from services.auth_utils import (generate_six_digit_token, save_token_to_db,
+                                 send_reset_password_email,
                                  send_validation_email,
                                  validar_dominio_graduacao,
                                  verify_and_delete_token)
@@ -22,6 +23,12 @@ router = APIRouter()
 # --- Modelos Auxiliares ---
 class TokenRequest(BaseModel):
     email: EmailStr
+
+class ResetPasswordInput(BaseModel):
+    email: EmailStr
+    token: str
+    new_password: str
+    confirm_new_password: str # <--- NOVO CAMPO: Confirmação no JSON
 
 # --- HELPER (Mantido do original) ---
 async def get_or_create_global_id(codigo: str, nome: str, turma: str, semestre: str, horario: List[str]) -> str:
@@ -55,7 +62,7 @@ async def get_or_create_global_id(codigo: str, nome: str, turma: str, semestre: 
 
 
 # ==========================================
-# 🚀 NOVA ROTA 1: SOLICITAR TOKEN
+# 🚀 ROTA 1: SOLICITAR TOKEN
 # ==========================================
 @router.post("/request-token")
 async def request_token(payload: TokenRequest):
@@ -84,21 +91,26 @@ async def request_token(payload: TokenRequest):
 
 
 # ==========================================
-# 🚀 ROTA 2: CADASTRO FINAL (MODIFICADA)
+# 🚀 ROTA 2: CADASTRO FINAL (COM CONFIRMAÇÃO)
 # ==========================================
 @router.post("/register", response_model=User, status_code=201)
 async def register(
     nome: str = Form(...),
     email: str = Form(...),
     senha: str = Form(...),
-    token: str = Form(...), # <--- NOVO CAMPO OBRIGATÓRIO
+    confirma_senha: str = Form(...), # <--- NOVO CAMPO NO FORM
+    token: str = Form(...), 
 ):
-    # 1. VALIDAÇÃO DO TOKEN ANTES DE TUDO
+    # 1. VALIDAÇÃO DE SENHAS IGUAIS
+    if senha != confirma_senha:
+        raise HTTPException(400, "As senhas digitadas não coincidem.")
+
+    # 2. VALIDAÇÃO DO TOKEN
     is_valid = await verify_and_delete_token(email, token)
     if not is_valid:
         raise HTTPException(401, "Token inválido ou expirado.")
 
-    # Daqui pra baixo, segue a lógica original de processar RID
+    # Daqui pra baixo, segue a lógica original
     try:
         users_col = db.get_collection("users")
         
@@ -106,10 +118,10 @@ async def register(
         if await users_col.find_one({"email": email}):
             raise HTTPException(400, "Email já cadastrado.")
 
-        # 2. Hash da senha
+        # 3. Hash da senha
         hashed = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
 
-        # 3. Cria Objeto Usuário (Limpo)
+        # 4. Cria Objeto Usuário (Limpo)
         new_user = User(
             nome=nome,
             email=email,
@@ -119,26 +131,25 @@ async def register(
             periodo_atual=None     # Será definido ao importar o RID
         )
 
-        # 4. Salva no Banco
+        # 5. Salva no Banco
         res = await users_col.insert_one(new_user.model_dump(by_alias=True, exclude=["id"]))
         user_id = res.inserted_id
         
         return await users_col.find_one({"_id": user_id})
 
+    except HTTPException as he:
+        raise he
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(500, f"Erro interno: {str(e)}")
 
-# ROTA 2: MEU PERFIL
+# ROTA 3: MEU PERFIL
 @router.get("/me", response_model=User, response_model_exclude={"senha_hash"})
 async def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
 
 
-# ROTA 3: IMPORTAR DISCPLINAS EM CURSO
-# No topo do arquivo, garanta que Set está importado
-# from bson import ObjectId
-
+# ROTA 4: IMPORTAR DISCPLINAS EM CURSO
 @router.post("/me/importar-rid")
 async def upload_rid_grade(
     arquivo: UploadFile = File(...),
@@ -176,7 +187,6 @@ async def upload_rid_grade(
             if current_user.disciplinas_atuais and semestre in current_user.disciplinas_atuais:
                 for d_antiga in current_user.disciplinas_atuais[semestre]:
                     # Recupera o ID da turma global se existir
-                    # Verifica se é dict ou objeto pydantic
                     gid = d_antiga.get("disciplina_id") if isinstance(d_antiga, dict) else d_antiga.disciplina_id
                     if gid:
                         ids_antigos.add(str(gid))
@@ -221,27 +231,22 @@ async def upload_rid_grade(
                 objs_semestre_user.append(d_obj.model_dump())
 
             # --- PASSO C: Remover das turmas antigas ---
-            # Se o ID estava na lista antiga mas NÃO está na nova, o aluno saiu da turma.
             ids_para_sair = ids_antigos - ids_novos
             
             if ids_para_sair:
-                print(f"Saindo das turmas: {ids_para_sair}")
                 # Converte strings para ObjectIds para a query
                 oids_para_sair = [ObjectId(i) for i in ids_para_sair]
                 
                 await disc_col.update_many(
                     {"_id": {"$in": oids_para_sair}},
-                    {"$pull": {"membros": user_id}} # $pull remove o item do array
+                    {"$pull": {"membros": user_id}}
                 )        
 
             # Atualiza a lista final deste semestre
             atuais_final[semestre] = objs_semestre_user
 
-        # 4. Atualiza o Usuário no Banco (Sobrescreve com a lista nova e limpa)
+        # 4. Atualiza o Usuário no Banco
         update_data = {
-            # Nota: Usamos $set com a chave específica do semestre para não apagar 
-            # semestres anteriores caso a estrutura mude, ou substituímos tudo se for o desejo.
-            # Aqui vamos substituir o objeto disciplinas_atuais inteiro para garantir consistência.
             "disciplinas_atuais": atuais_final 
         }
         if periodo_detectado:
@@ -263,7 +268,7 @@ async def upload_rid_grade(
         traceback.print_exc()
         raise HTTPException(500, f"Erro ao importar RID: {str(e)}")
 
-# ROTA 4: ENVIAR HISTÓRICO
+# ROTA 5: ENVIAR HISTÓRICO
 @router.post("/me/historico")
 async def upload_historico(
     arquivo: UploadFile = File(...),
@@ -302,3 +307,63 @@ async def upload_historico(
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(500, f"Erro: {str(e)}")
+    
+# ==========================================
+# 🔑 FLUXO DE RESET DE SENHA
+# ==========================================
+
+@router.post("/forgot-password")
+async def forgot_password(payload: TokenRequest):
+    """
+    Passo 1: Usuário informa e-mail.
+    Se existir, gera token e envia por e-mail.
+    """
+    email = payload.email
+    
+    # 1. Verifica se o usuário REALMENTE existe (Diferente do cadastro)
+    user = await db.get_collection("users").find_one({"email": email})
+    if not user:
+        raise HTTPException(404, "E-mail não encontrado no sistema.")
+
+    # 2. Gera Token e Salva (Reutiliza a mesma lógica do cadastro)
+    token = generate_six_digit_token()
+    await save_token_to_db(email, token)
+
+    # 3. Envia E-mail de RESET (Função nova)
+    try:
+        await send_reset_password_email(email, token)
+    except Exception as e:
+        print(f"Erro envio email reset: {e}")
+        raise HTTPException(500, "Erro ao enviar e-mail.")
+
+    return {"message": f"Código de recuperação enviado para {email}"}
+
+
+@router.post("/reset-password")
+async def reset_password_confirm(payload: ResetPasswordInput):
+    """
+    Passo 2: Recebe Email + Token + Nova Senha + Confirmação.
+    Verifica token, valida senhas e atualiza o banco.
+    """
+    # 1. VALIDAÇÃO DE SENHAS
+    if payload.new_password != payload.confirm_new_password:
+        raise HTTPException(400, "As senhas digitadas não coincidem.")
+
+    # 2. Valida o Token
+    is_valid = await verify_and_delete_token(payload.email, payload.token)
+    if not is_valid:
+        raise HTTPException(401, "Código inválido ou expirado.")
+
+    # 3. Gera o Hash da NOVA senha
+    hashed_new = bcrypt.hashpw(payload.new_password.encode(), bcrypt.gensalt()).decode()
+
+    # 4. Atualiza no Banco
+    result = await db.get_collection("users").update_one(
+        {"email": payload.email},
+        {"$set": {"senha_hash": hashed_new}}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(404, "Usuário não encontrado.")
+
+    return {"message": "Senha alterada com sucesso! Faça login com a nova senha."}
