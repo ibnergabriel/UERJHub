@@ -3,35 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://fonts.googleapis.com/css?family=Open+Sans&display=swap" rel="stylesheet" />
     <title>Cadastro UERJHUB</title>
-    <link rel="stylesheet" href="./css/main.css">
+    <link rel="stylesheet" href="./css/main.css"> 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     
     <style>
-        /* Pequenos ajustes específicos para o cadastro */
+        /* Estilos mantidos e adicionados para o Token */
         .file-upload-label {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 0.9em;
-            color: #333;
-            font-weight: bold;
+            display: block; margin-bottom: 5px; font-size: 0.9em; color: #333; font-weight: bold;
         }
         .file-input {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 15px;
-            background: #f1f1f1;
-            border-radius: 5px;
-            border: 1px solid #ddd;
+            width: 100%; padding: 10px; margin-bottom: 15px; background: #f1f1f1;
+            border-radius: 5px; border: 1px solid #ddd;
         }
         .warning-text {
-            font-size: 0.8em;
-            color: #666;
-            margin-top: -10px;
-            margin-bottom: 15px;
-            display: block;
+            font-size: 0.8em; color: #666; margin-top: -10px; margin-bottom: 15px; display: block;
         }
+        /* Classe para esconder passos */
+        .hidden { display: none; }
     </style>
 </head>
 <body>
@@ -43,21 +32,47 @@
     
     <div class="login-container" style="margin-top: -50px;">
         <h2>Crie sua conta</h2>
-        <p style="text-align: center; color: #666; margin-bottom: 20px;">Use seu email institucional</p>
+        <p style="text-align: center; color: #666; margin-bottom: 20px;">Aluno de Graduação</p>
 
-        <form id="cadastroForm">
-            
+        <div id="step1-container">
+            <p style="font-size: 0.9rem; text-align: center; margin-bottom: 15px;">
+                Digite seu e-mail institucional para receber o código de verificação.
+            </p>
             <div class="form-group">
                 <div class="input-with-icon">
-                    <span class="icon-background icon-left"><i class="fas fa-user"></i></span>
-                    <input type="text" id="nome" name="nome" placeholder="Nome Completo" required>
+                    <span class="icon-background icon-left"><i class="fas fa-envelope"></i></span>
+                    <input type="email" id="emailStep1" placeholder="Email (@graduacao.uerj.br)" required>
+                </div>
+            </div>
+            <div class="buttons-group">
+                <button type="button" class="btn-entrar" onclick="solicitarToken()" id="btnSolicitar">
+                    Receber Código
+                </button>
+                <button type="button" class="btn-cadastrar" onclick="window.location.href='login.html'">
+                    Voltar
+                </button>
+            </div>
+        </div>
+
+        <form id="cadastroFormStep2" class="hidden">
+            
+            <p style="text-align: center; font-size: 0.9em; color: green; margin-bottom: 15px;">
+                Código enviado para: <b id="emailDisplay"></b>
+            </p>
+            
+            <input type="hidden" id="emailFinal" name="email">
+
+            <div class="form-group">
+                <div class="input-with-icon">
+                    <span class="icon-background icon-left"><i class="fas fa-key"></i></span>
+                    <input type="text" id="token" name="token" placeholder="Código de 6 dígitos" maxlength="6" required>
                 </div>
             </div>
 
             <div class="form-group">
                 <div class="input-with-icon">
-                    <span class="icon-background icon-left"><i class="fas fa-envelope"></i></span>
-                    <input type="email" id="email" name="email" placeholder="Email (@aluno.uerj.br)" required>
+                    <span class="icon-background icon-left"><i class="fas fa-user"></i></span>
+                    <input type="text" id="nome" name="nome" placeholder="Nome Completo" required>
                 </div>
             </div>
             
@@ -71,8 +86,7 @@
             <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
 
             <div class="buttons-group">
-                <button type="submit" class="btn-entrar" id="btnCadastrar">Cadastrar</button>
-                <button type="button" class="btn-cadastrar" onclick="window.location.href='login.html'">Voltar para Login</button>
+                <button type="submit" class="btn-entrar" id="btnFinalizar">Confirmar Cadastro</button>
             </div>
         </form>
         
@@ -81,67 +95,87 @@
         </div>
     </div>
 
-    <form id="cadastroForm">
-        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-    
-        <div class="form-group">
-            <label class="file-upload-label"><i class="fas fa-file-pdf"></i> Enviar RID (PDF)</label>
-            <input type="file" id="rid" name="rid" accept=".pdf" class="file-input" required>
-            <span class="warning-text">* Usado para confirmar sua matrícula nas turmas atuais.</span>
-        </div>
-    
-        <div class="buttons-group">
-            <button type="submit" class="btn-entrar" id="btnCadastrar">Cadastrar</button>
-            <button type="button" class="btn-cadastrar" onclick="window.location.href='login.html'">Voltar</button>
-        </div>
-    </form>
-    
     <script>
-    const cadastroForm = document.getElementById('cadastroForm');
-    const btnCadastrar = document.getElementById('btnCadastrar');
-    
-    cadastroForm.addEventListener('submit', async (event) => {
-        event.preventDefault();
-    
-        const nome = document.getElementById('nome').value;
-        const email = document.getElementById('email').value.toLowerCase();
-        const senha = document.getElementById('senha').value;
-        const ridFile = document.getElementById('rid').files[0];
-    
-        if (!email.includes('uerj.br')) {
-            alert("Use um email institucional (@uerj.br)");
+    const API_URL = "http://localhost:8000"; // Ajuste se necessário
+
+    // --- FUNÇÃO 1: Solicitar o Token ---
+    async function solicitarToken() {
+        const emailInput = document.getElementById('emailStep1');
+        const btnSolicitar = document.getElementById('btnSolicitar');
+        const email = emailInput.value.trim().toLowerCase();
+
+        if (!email) {
+            alert("Por favor, digite seu e-mail.");
             return;
         }
-    
-        btnCadastrar.innerText = "Processando...";
-        btnCadastrar.disabled = true;
-    
+
+        // Feedback visual de carregamento
+        btnSolicitar.innerText = "Enviando...";
+        btnSolicitar.disabled = true;
+
         try {
-            const formData = new FormData();
-            formData.append('nome', nome);
-            formData.append('email', email);
-            formData.append('senha', senha);
-            
-    
-            const response = await fetch('http://localhost:8000/auth/register', {
+            const response = await fetch(`${API_URL}/auth/request-token`, {
                 method: 'POST',
-                body: formData 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email })
             });
-    
+
+            const data = await response.json();
+
             if (response.ok) {
-                alert("Cadastro realizado! Faça login.");
+                // SUCESSO: Troca as telas
+                document.getElementById('step1-container').classList.add('hidden');
+                document.getElementById('cadastroFormStep2').classList.remove('hidden');
+                
+                // Preenche o e-mail no passo 2 automaticamente
+                document.getElementById('emailDisplay').innerText = email;
+                document.getElementById('emailFinal').value = email;
+                
+                alert("Código enviado! Verifique seu e-mail (inclusive Spam).");
+            } else {
+                alert(`Erro: ${data.detail || "Falha ao enviar token"}`);
+            }
+
+        } catch (error) {
+            console.error(error);
+            alert("Erro de conexão com o servidor.");
+        } finally {
+            btnSolicitar.innerText = "Receber Código";
+            btnSolicitar.disabled = false;
+        }
+    }
+
+    // --- FUNÇÃO 2: Finalizar Cadastro ---
+    document.getElementById('cadastroFormStep2').addEventListener('submit', async (event) => {
+        event.preventDefault(); // Impede refresh
+
+        const btnFinalizar = document.getElementById('btnFinalizar');
+        btnFinalizar.innerText = "Cadastrando...";
+        btnFinalizar.disabled = true;
+
+        // O FormData pega automaticamente todos os inputs com 'name' dentro do form (incluindo o arquivo RID)
+        const form = document.getElementById('cadastroFormStep2');
+        const formData = new FormData(form);
+
+        try {
+            const response = await fetch(`${API_URL}/auth/register`, {
+                method: 'POST',
+                body: formData // Headers são automáticos para multipart/form-data
+            });
+
+            if (response.ok) {
+                alert("Cadastro realizado com sucesso! Você será redirecionado.");
                 window.location.href = 'login.html';
             } else {
                 const error = await response.json();
-                alert(`Erro: ${error.detail}`);
+                alert(`Erro no cadastro: ${error.detail}`);
             }
-    
         } catch (error) {
             console.error(error);
-            alert("Erro ao conectar no servidor.");
+            alert("Erro ao tentar cadastrar.");
         } finally {
-            btnCadastrar.innerText = "Cadastrar";
-            btnCadastrar.disabled = false;
+            btnFinalizar.innerText = "Confirmar Cadastro";
+            btnFinalizar.disabled = false;
         }
     });
     </script>
