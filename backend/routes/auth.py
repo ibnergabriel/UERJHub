@@ -1,117 +1,92 @@
-# backend/routes/auth.py
-
 import bcrypt
 import traceback
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from typing import List, Dict
 from bson import ObjectId
 from services.extractor import UERJExtractor
 from database import db
 from models import User, Discipline, DisciplinaAluno
+from security import get_current_user # <--- Importante: Guarda de Segurança
 
 router = APIRouter()
 
-# --- CORREÇÃO 1: Função agora recebe horário e salva tudo ---
+# --- HELPER: Busca ou Cria Turma Global ---
 async def get_or_create_global_id(codigo: str, nome: str, turma: str, semestre: str, horario: List[str]) -> str:
-    """
-    Busca uma turma existente ou cria uma nova.
-    A chave única é: CODIGO + TURMA + SEMESTRE.
-    """
     try:
         coll = db.get_collection("disciplines")
+        turma_limpa = str(turma).strip().upper() if turma else "1"
+        if turma_limpa.isdigit(): turma_limpa = str(int(turma_limpa))
         
-        # Garante que a turma seja string e sem espaços (Normalização)
-        turma_limpa = str(turma).strip() if turma else "1"
-        
-        # 1. Busca Exata
         filtro = {
-            "codigo": codigo, 
+            "codigo": codigo.strip().upper(), 
             "turma": turma_limpa,
-            "semestre": semestre
+            "semestre": semestre.strip()
         }
         
         found = await coll.find_one(filtro)
-        
-        if found: 
-            # Se já existe, retorna o ID dela (não duplica!)
-            return str(found["_id"])
-        
-        # 2. Se não existe, CRIA com os dados completos
-        print(f"🆕 Criando nova turma global: {nome} (Turma {turma_limpa})")
+        if found: return str(found["_id"])
         
         new_d = Discipline(
-            nome=nome, 
-            codigo=codigo, 
-            turma=turma_limpa, # Salva o número da turma
-            semestre=semestre,
-            horario=horario,   # Salva o horário
-            membros=[]         # Começa vazia
+            nome=nome.strip(), 
+            codigo=codigo.strip().upper(), 
+            turma=turma_limpa, 
+            semestre=semestre.strip(),
+            horario=horario,   
+            membros=[]         
         )
-        
         res = await coll.insert_one(new_d.model_dump(by_alias=True, exclude=["id"]))
         return str(res.inserted_id)
     except Exception as e:
-        print(f"Erro ao buscar/criar disciplina: {e}")
+        print(f"Erro disciplina global: {e}")
         return None
 
-@router.get("/users/debug", response_model=List[User])
-async def list_all_users():
-    return await db.get_collection("users").find().to_list(100)
-
+# --- ROTA 1: CADASTRO (Pública - Só pede RID) ---
 @router.post("/register", response_model=User, status_code=201)
 async def register(
     nome: str = Form(...),
     email: str = Form(...),
     senha: str = Form(...),
-    rid: UploadFile = File(...),
-    historico: UploadFile = File(...)
+    rid: UploadFile = File(...)
 ):
     try:
         users_col = db.get_collection("users")
         if await users_col.find_one({"email": email}):
             raise HTTPException(400, "Email já cadastrado.")
 
-        # Extração
+        # Processa RID
         rid_bytes = await rid.read()
-        hist_bytes = await historico.read()
-
         dict_atuais = UERJExtractor.parse_rid(rid_bytes)
-        dict_hist = UERJExtractor.parse_historico(hist_bytes)
 
-        # Processamento
-        async def processar_disciplinas(dados_raw: Dict, vincular_global: bool):
-            resultado = {}
-            for semestre, lista in dados_raw.items():
-                objs_semestre = []
-                for item in lista:
-                    gid = None
-                    # Se for disciplina atual, buscamos/criamos a sala global
-                    if vincular_global:
-                        gid = await get_or_create_global_id(
-                            codigo=item["codigo"], 
-                            nome=item["nome"],
-                            turma=item.get("turma", "1"), # Passa a turma
-                            semestre=semestre,
-                            horario=item.get("horario", []) # Passa o horário!
-                        )
-                    
-                    d_obj = DisciplinaAluno(
-                        codigo=item["codigo"],
-                        nome=item["nome"],
-                        turma=item.get("turma"),
-                        horario=item.get("horario", []),
-                        nota=item.get("nota"),
-                        status=item.get("status", "Cursando"),
-                        disciplina_id=gid
-                    )
-                    objs_semestre.append(d_obj)
-                resultado[semestre] = objs_semestre
-            return resultado
+        # Processa Disciplinas e cria Turmas
+        atuais_final = {}
+        for semestre, lista in dict_atuais.items():
+            objs_semestre = []
+            for item in lista:
+                codigo_user = item["codigo"].strip().upper()
+                turma_user = str(item.get("turma", "1")).strip().upper()
+                if turma_user.isdigit(): turma_user = str(int(turma_user))
 
-        atuais_final = await processar_disciplinas(dict_atuais, vincular_global=True)
-        historico_final = await processar_disciplinas(dict_hist, vincular_global=False)
+                gid = await get_or_create_global_id(
+                    codigo=codigo_user, 
+                    nome=item["nome"],
+                    turma=turma_user, 
+                    semestre=semestre,
+                    horario=item.get("horario", []) 
+                )
+                
+                d_obj = DisciplinaAluno(
+                    codigo=codigo_user,
+                    nome=item["nome"].strip(),
+                    turma=turma_user,
+                    horario=item.get("horario", []),
+                    nota=None,
+                    status="Cursando",
+                    disciplina_id=gid
+                )
+                objs_semestre.append(d_obj)
+            atuais_final[semestre] = objs_semestre
 
-        # Criação do Usuário
+        # Cria Usuário
         hashed = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
         periodo_ref = list(atuais_final.keys())[0] if atuais_final else "2025.1"
 
@@ -120,14 +95,14 @@ async def register(
             email=email,
             senha_hash=hashed,
             disciplinas_atuais=atuais_final,
-            historico=historico_final,
+            historico={}, # Histórico começa vazio
             periodo_atual=periodo_ref
         )
 
         res = await users_col.insert_one(new_user.model_dump(by_alias=True, exclude=["id"]))
         user_id = res.inserted_id
         
-        # --- MATRÍCULA AUTOMÁTICA (Adiciona o aluno nas turmas encontradas) ---
+        # Matrícula Automática
         if atuais_final:
             disc_col = db.get_collection("disciplines")
             for semestre, lista_disciplinas in atuais_final.items():
@@ -143,3 +118,50 @@ async def register(
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(500, f"Erro interno: {str(e)}")
+
+# --- ROTA 2: MEU PERFIL (Protegida) ---
+@router.get("/me", response_model=User, response_model_exclude={"senha_hash"})
+async def read_users_me(current_user: User = Depends(get_current_user)):
+    """Retorna os dados do usuário logado baseado no Token"""
+    return current_user
+
+# --- ROTA 3: ENVIAR HISTÓRICO (Protegida) ---
+@router.post("/me/historico")
+async def upload_historico(
+    arquivo: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        hist_bytes = await arquivo.read()
+        dict_hist = UERJExtractor.parse_historico(hist_bytes)
+        
+        if not dict_hist:
+            raise HTTPException(400, "Não foi possível ler o histórico.")
+
+        historico_final = {}
+        for semestre, lista in dict_hist.items():
+            objs_semestre = []
+            for item in lista:
+                d_obj = DisciplinaAluno(
+                    codigo=item["codigo"].strip().upper(),
+                    nome=item["nome"].strip(),
+                    turma=None,
+                    horario=[],
+                    nota=item.get("nota"),
+                    status=item.get("status", "Cursado"),
+                    disciplina_id=None
+                )
+                objs_semestre.append(d_obj.model_dump())
+            historico_final[semestre] = objs_semestre
+
+        # Salva no banco
+        await db.get_collection("users").update_one(
+            {"_id": ObjectId(current_user.id)},
+            {"$set": {"historico": historico_final}}
+        )
+
+        return {"message": "Histórico importado!", "semestres": list(historico_final.keys())}
+
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(500, f"Erro: {str(e)}")

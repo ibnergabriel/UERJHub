@@ -1,9 +1,10 @@
 import shutil
 import os
 import uuid
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Body
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Body, Depends
 from database import db
-from models import MaterialRepository, ArquivoMaterial, MaterialTipo
+from models import MaterialRepository, ArquivoMaterial, MaterialTipo, User
+from security import get_current_user
 
 router = APIRouter()
 
@@ -13,12 +14,15 @@ UPLOAD_DIR = "uploads"
 @router.post("/{codigo_disciplina}/upload")
 async def upload_material(
     codigo_disciplina: str,
-    semestre: str = Form(...),      # Form(...) é usado quando enviamos arquivos junto
+    semestre: str = Form(...),
     professor_id: str = Form(...),
     titulo: str = Form(...),
-    tipo: MaterialTipo = Form(...), # PDF, SLIDE, etc.
-    aluno_id: str = Form(...),
-    file: UploadFile = File(...)    # <--- O ARQUIVO BINÁRIO VEM AQUI
+    tipo: MaterialTipo = Form(...),
+    # REMOVIDO: aluno_id: str = Form(...),  <--- Não confiamos mais no ID enviado pelo form
+    file: UploadFile = File(...),
+    
+    # ADICIONADO: O Token é validado aqui. Se falhar, nem roda a função.
+    current_user: User = Depends(get_current_user) 
 ):
     """
     Recebe um arquivo (PDF, PPT, etc), salva na pasta /uploads
@@ -57,9 +61,9 @@ async def upload_material(
     
     novo_arquivo_obj = ArquivoMaterial(
         titulo=titulo,
-        url=url_final, # Salva o caminho relativo
+        url=url_final,
         tipo=tipo,
-        aluno_autor_id=aluno_id
+        aluno_autor_id=current_user.id 
     )
     
     mongo_path = f"acervo.{semestre_key}.{professor_id}"
