@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans&display=swap" rel="stylesheet" />
+    <title>Login UERJHUB</title>
+    <link rel="stylesheet" href="./css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="icon" type="image/x-icon" href="images/favicon.ico"> 
+</head>
+<body>
+    <header class="px-5 py-4" style="background: url('images/v105_14.png') no-repeat center center; background-size: cover; height: 50vh;" >
+        <span class="auth-title">Autenticação</span>
+            <div>
+                <img src="images/v105_14.png" alt="Árvore UERJ" style="width: 100px; height: auto; display: none;">
+            </div>
+    </header>
+    
+    <div class="espacamento"></div>
+    <div class="v172_551"></div>
+    
+    <div class="login-container">
+        <h2>Faça o seu login</h2>
+        
+        <form id="loginForm" action="#" method="POST">
+            <div class="form-group">
+                <label for="usuario" class="sr-only">Usuário</label>
+                <div class="input-with-icon">
+                    <span class="icon-background icon-left"><i class="fas fa-user"></i></span>
+                    <input type="email" id="usuario" name="usuario" placeholder="Email (@uerj.br)" required>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="senha" class="sr-only">Senha</label>
+                <div class="input-with-icon">
+                    <span class="icon-background icon-left"><i class="fas fa-lock"></i></span>
+                    <input type="password" id="senha" name="senha" placeholder="Senha" required>
+                </div>
+                <a href="#" class="forgot-password">Esqueceu a Senha?</a>
+            </div>
+
+            <div class="buttons-group">
+                <button type="submit" class="btn-entrar" id="btnEntrar">Entrar</button>
+                <button type="button" class="btn-cadastrar" onclick="window.location.href='register.html'">Cadastrar</button>
+            </div>
+        </form>
+        
+        <div class="logo-bottom">
+            <img src="images/v105_24.png" alt="Logo UERJ">
+        </div>
+    </div>
+
+    <script>
+        const loginForm = document.getElementById('loginForm');
+        const btnEntrar = document.getElementById('btnEntrar');
+
+        loginForm.addEventListener('submit', async (event) => {
+            event.preventDefault(); // Impede a página de recarregar
+
+            // 1. Pegar valores dos inputs
+            const email = document.getElementById('usuario').value;
+            const password = document.getElementById('senha').value;
+
+            // 2. Feedback visual (Botão carregando)
+            const textoOriginal = btnEntrar.innerText;
+            btnEntrar.innerText = "Entrando...";
+            btnEntrar.disabled = true;
+
+            try {
+                // 3. Preparar dados para o formato que o OAuth2 exige (form-urlencoded)
+                const formData = new URLSearchParams();
+                formData.append('username', email); // O padrão exige o campo 'username', mesmo sendo email
+                formData.append('password', password);
+
+                // 4. Enviar para a API (ajuste a URL se seu docker não for localhost)
+                const response = await fetch('http://localhost:8000/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: formData
+                });
+
+                // 5. Verificar resposta
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // SALVAR O TOKEN! Isso é o "crachá" do usuário
+                    localStorage.setItem('token', data.access_token);
+                    
+                    // Redirecionar para a página principal (Dashboard)
+                    alert("Login realizado com sucesso!");
+                    window.location.href = 'dashboard.html'; // Crie esta página depois
+                } else {
+                    const errorData = await response.json();
+                    alert(`Erro: ${errorData.detail || 'Email ou senha incorretos'}`);
+                }
+
+            } catch (error) {
+                console.error("Erro de conexão:", error);
+                alert("Erro ao conectar com o servidor. Verifique se o backend está rodando.");
+            } finally {
+                // Restaurar botão
+                btnEntrar.innerText = textoOriginal;
+                btnEntrar.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel da Turma - UERJHUB</title>
+    <link rel="stylesheet" href="./css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="icon" type="image/x-icon" href="images/favicon.ico">
+    
+    <style>
+        .class-header {
+            background: white; padding: 25px; border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-top: -60px;
+            position: relative; z-index: 2;
+            border-left: 8px solid #0b84c8;
+        }
+        .whatsapp-box {
+            background: #dcf8c6; padding: 15px; border-radius: 8px;
+            margin-top: 15px; display: flex; align-items: center; justify-content: space-between;
+        }
+        .whatsapp-box a { color: #075e54; font-weight: bold; text-decoration: none; font-size: 1.1em;}
+        
+        .panel-grid {
+            display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-top: 20px;
+        }
+        @media (max-width: 768px) { .panel-grid { grid-template-columns: 1fr; } }
+
+        .section-box {
+            background: white; padding: 20px; border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05); height: 100%;
+        }
+
+        /* Avisos */
+        .warning-item {
+            border-left: 4px solid #ff9800; background: #fff8e1;
+            padding: 10px; margin-bottom: 10px; border-radius: 4px;
+        }
+        .btn-action {
+            background: #0b84c8; color: white; border: none; padding: 5px 10px;
+            border-radius: 5px; cursor: pointer; font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <header class="px-5 py-4" style="background: url('images/v105_14.png') no-repeat center center; background-size: cover; height: 30vh;"></header>
+
+    <div class="container" style="max-width: 1100px; margin: 0 auto; padding: 20px;">
+        
+        <div class="class-header">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div>
+                    <h1 id="className" style="margin:0; color:#333;">Carregando...</h1>
+                    <p id="classCode" style="color:#666; margin-top:5px;">...</p>
+                </div>
+                <button onclick="window.location.href='disciplines.html'" class="btn-cadastrar" style="width:auto; padding: 5px 15px; background:#666;">Voltar</button>
+            </div>
+
+            <div class="whatsapp-box">
+                <span id="whatsAppLinkArea">
+                    <i class="fab fa-whatsapp" style="font-size: 1.5em; margin-right: 10px;"></i> 
+                    <a href="#" id="linkZap" target="_blank">Entrar no Grupo da Turma</a>
+                    <span id="noLinkZap" style="display:none; color: #555;">Nenhum grupo cadastrado ainda.</span>
+                </span>
+                <button class="btn-action" style="background:none; color:#075e54; text-decoration:underline;" onclick="editWhatsApp()">Editar Link</button>
+            </div>
+        </div>
+
+        <div class="panel-grid">
+            
+            <div class="section-box">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3><i class="fas fa-bullhorn"></i> Mural da Turma</h3>
+                    <button class="btn-action" onclick="toggleWarningForm()">+ Aviso</button>
+                </div>
+
+                <div id="newWarningForm" style="display:none; background:#f0f0f0; padding:15px; border-radius:8px; margin-bottom:15px;">
+                    <input type="text" id="avisoTitulo" placeholder="Assunto" style="width: 100%; padding: 8px; margin-bottom: 5px;">
+                    <textarea id="avisoMsg" placeholder="Mensagem..." style="width: 100%; padding: 8px; height: 60px; margin-bottom: 5px;"></textarea>
+                    <button onclick="postarAviso()" style="background:#28a745; color:white; border:none; padding:5px 15px; border-radius:4px; cursor:pointer;">Publicar</button>
+                </div>
+
+                <div id="warningsList">
+                    <p>Carregando avisos...</p>
+                </div>
+            </div>
+
+            <div class="section-box">
+                <h3><i class="fas fa-info-circle"></i> Detalhes</h3>
+                <p style="margin-top: 10px;"><strong>Horário:</strong></p>
+                <div id="classSchedule" style="color:#555;">...</div>
+
+                <h3 style="margin-top: 30px;"><i class="fas fa-folder"></i> Materiais</h3>
+                <p style="font-size: 0.9em; color: #666;">Acesse o repositório de arquivos desta disciplina.</p>
+                <button onclick="window.location.href='Materiais.html'" class="btn-cadastrar" style="margin-top: 10px;">Ver Materiais</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = 'login.html';
+
+        // 1. PEGAR ID DA URL (Ex: turma.html?id=123)
+        const urlParams = new URLSearchParams(window.location.search);
+        const disciplineId = urlParams.get('id');
+
+        if (!disciplineId) {
+            alert("Turma não especificada.");
+            window.location.href = 'disciplines.html';
+        }
+
+        // 2. CARREGAR DADOS DA TURMA
+        async function loadData() {
+            try {
+                // Busca detalhes da turma
+                const res = await fetch(`http://localhost:8000/disciplines/${disciplineId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (res.ok) {
+                    const turma = await res.json();
+                    renderHeader(turma);
+                    loadWarnings(); // Carrega avisos DEPOIS de saber que a turma existe
+                } else {
+                    alert("Erro ao carregar turma ou acesso negado.");
+                    window.location.href = 'disciplines.html';
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function renderHeader(turma) {
+            document.getElementById('className').innerText = turma.nome;
+            document.getElementById('classCode').innerText = `${turma.codigo} - Turma ${turma.turma} (${turma.semestre})`;
+            
+            // Horário
+            const horarioDiv = document.getElementById('classSchedule');
+            if(turma.horario && turma.horario.length) {
+                horarioDiv.innerHTML = turma.horario.map(h => `<div>${h}</div>`).join('');
+            } else {
+                horarioDiv.innerText = "Sem horário definido";
+            }
+
+            // WhatsApp
+            const linkEl = document.getElementById('linkZap');
+            const noLinkEl = document.getElementById('noLinkZap');
+            if (turma.whatsapp_link) {
+                linkEl.href = turma.whatsapp_link;
+                linkEl.style.display = 'inline';
+                noLinkEl.style.display = 'none';
+            } else {
+                linkEl.style.display = 'none';
+                noLinkEl.style.display = 'inline';
+            }
+        }
+
+        // 3. CARREGAR AVISOS DA TURMA
+        async function loadWarnings() {
+            const list = document.getElementById('warningsList');
+            try {
+                const res = await fetch(`http://localhost:8000/warnings/?disciplina_id=${disciplineId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const avisos = await res.json();
+                
+                list.innerHTML = "";
+                if(avisos.length === 0) {
+                    list.innerHTML = "<p style='color:#999'>Nenhum aviso no mural.</p>";
+                    return;
+                }
+
+                avisos.forEach(av => {
+                    const data = new Date(av.created_at).toLocaleDateString('pt-BR');
+                    list.innerHTML += `
+                        <div class="warning-item">
+                            <strong>${av.titulo}</strong>
+                            <p style="margin: 5px 0;">${av.mensagem}</p>
+                            <small style="color:#888;">${data}</small>
+                        </div>
+                    `;
+                });
+            } catch (e) { list.innerHTML = "Erro ao carregar avisos."; }
+        }
+
+        // 4. AÇÕES (Editar Zap e Postar Aviso)
+        async function editWhatsApp() {
+            const novoLink = prompt("Cole o link do grupo do WhatsApp:");
+            if (!novoLink) return;
+
+            try {
+                const res = await fetch(`http://localhost:8000/disciplines/${disciplineId}`, {
+                    method: 'PATCH',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ whatsapp_link: novoLink })
+                });
+
+                if (res.ok) {
+                    alert("Link salvo!");
+                    location.reload();
+                } else { alert("Erro ao salvar."); }
+            } catch (e) { console.error(e); }
+        }
+
+        function toggleWarningForm() {
+            const form = document.getElementById('newWarningForm');
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }
+
+        async function postarAviso() {
+            const titulo = document.getElementById('avisoTitulo').value;
+            const msg = document.getElementById('avisoMsg').value;
+            if(!titulo || !msg) return alert("Preencha tudo.");
+
+            const payload = {
+                tipo: "disciplina",
+                disciplina_id: disciplineId, // Usa o ID da URL
+                titulo: titulo,
+                mensagem: msg,
+                autor_id: "temp"
+            };
+
+            try {
+                const res = await fetch('http://localhost:8000/warnings/', {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                if(res.ok) {
+                    document.getElementById('avisoTitulo').value = "";
+                    document.getElementById('avisoMsg').value = "";
+                    toggleWarningForm();
+                    loadWarnings();
+                } else { alert("Erro ao publicar."); }
+            } catch(e) { console.error(e); }
+        }
+
+        // Inicia
+        loadData();
+    </script>
+</body>
+</html>

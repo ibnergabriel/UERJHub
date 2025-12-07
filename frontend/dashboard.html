@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portal UERJHUB</title>
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,600,700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel="icon" type="image/x-icon" href="images/favicon.ico">
+
+  <style>
+    /* RESET BÁSICO */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Open Sans', sans-serif;
+      background-color: #f4f7f6;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* HEADER / CABEÇALHO */
+    header {
+      background: url('images/v105_14.png') no-repeat center center;
+      background-size: cover;
+      height: 25vh; /* Ocupa 25% da altura da tela */
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      padding: 20px 40px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    
+    /* Overlay escuro para melhorar leitura do texto sobre a imagem */
+    header::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.6));
+    }
+
+    .header-content {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: white;
+    }
+
+    .welcome-text h1 { font-size: 2rem; font-weight: 700; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+    .welcome-text p { font-size: 1.1rem; opacity: 0.9; }
+
+    .btn-logout {
+      background: rgba(255, 77, 77, 0.9);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: 0.3s;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    .btn-logout:hover { background: red; }
+
+    /* LAYOUT DA GRADE (DASHBOARD) */
+    .dashboard-container {
+      max-width: 1200px;
+      margin: -40px auto 40px auto; /* Sobe um pouco pra cima do header */
+      padding: 0 20px;
+      position: relative;
+      z-index: 3;
+      
+      display: grid;
+      /* Define 3 colunas: 1 parte, 1.5 partes, 1 parte */
+      grid-template-columns: 1fr 1.5fr 1fr; 
+      /* Define altura das linhas */
+      grid-auto-rows: minmax(200px, auto);
+      gap: 20px;
+    }
+
+    /* ESTILO DOS CARDS/BOTÕES */
+    .card {
+      border-radius: 15px;
+      padding: 20px;
+      color: white;
+      text-decoration: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      transition: transform 0.3s, box-shadow 0.3s;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    .card i {
+      font-size: 3rem;
+      margin-bottom: 15px;
+      opacity: 0.8;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 30px rgba(0,0,0,0.2);
+      filter: brightness(1.1); /* Clareia um pouco */
+    }
+
+    /* CORES E POSIÇÕES ESPECÍFICAS (Bento Grid Layout) */
+    
+    /* Coluna 1 */
+    .disciplinas {
+      background: linear-gradient(135deg, #0b84c8, #005f99);
+      grid-column: 1; 
+      grid-row: 1;
+    }
+    
+    .materiais {
+      background: linear-gradient(135deg, #36789c, #1f4e69);
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    /* Coluna 2 */
+    .avisos {
+      background: linear-gradient(135deg, #2d95d0, #1a6fa3);
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    /* Coluna 3 */
+    .perfil {
+      background: linear-gradient(135deg, #08669a, #043d5d);
+      grid-column: 3;
+      grid-row: 1;
+    }
+
+    /* PROFESSORES: Ocupa coluna 2 e 3 na linha de baixo */
+    .professores {
+      background: linear-gradient(135deg, #7fb5d4, #5a9bc0);
+      grid-column: 2 / span 2; /* Começa na 2 e ocupa 2 colunas */
+      grid-row: 2;
+    }
+
+    /* RESPONSIVIDADE (CELULAR) */
+    @media (max-width: 768px) {
+      .header-content { flex-direction: column; text-align: center; gap: 10px; }
+      
+      .dashboard-container {
+        grid-template-columns: 1fr; /* Tudo vira 1 coluna */
+        margin-top: 20px;
+      }
+      
+      /* Reseta posições específicas para empilhar */
+      .disciplinas, .materiais, .avisos, .perfil, .professores {
+        grid-column: auto;
+        grid-row: auto;
+        min-height: 150px; /* Cartões menores no celular */
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-content">
+      <div class="welcome-text">
+        <h1 id="welcomeUser">Bem-vindo(a)!</h1>
+        <p>Portal Acadêmico UERJHUB</p>
+      </div>
+      <button onclick="logout()" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+  </header>
+
+  <div class="dashboard-container">
+    
+    <a href="disciplines.html" class="card disciplinas">
+      <i class="fas fa-chalkboard-teacher"></i>
+      Turmas do Período
+    </a>
+
+    <a href="warnings.html" class="card avisos">
+      <i class="fas fa-bullhorn"></i>
+      Quadro de Avisos
+    </a>
+
+    <a href="profile.html" class="card perfil">
+      <i class="fas fa-user-circle"></i>
+      Meu Perfil
+    </a>
+
+    <a href="Materiais.html" class="card materiais">
+      <i class="fas fa-folder-open"></i>
+      Materiais
+    </a>
+
+    <a href="professors.html" class="card professores">
+      <i class="fas fa-users"></i>
+      Lista de Professores e Avaliações
+    </a>
+
+  </div>
+
+  <script>
+    // 1. Verifica se está logado
+    const token = localStorage.getItem('token');
+    
+    if (!token) {
+      window.location.href = 'login.html'; // Redireciona para login se não tiver token
+    }
+
+    // 2. Carrega nome do usuário
+    async function carregarUsuario() {
+        try {
+            // Chama a rota /auth/me que criamos
+            const response = await fetch('http://localhost:8000/auth/me', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const user = await response.json();
+                // Atualiza o texto da tela
+                document.getElementById('welcomeUser').innerText = `Olá, ${user.nome.split(' ')[0]}!`;
+            } else {
+                // Se o token expirou
+                logout();
+            }
+        } catch (error) {
+            console.error("Erro ao carregar usuário:", error);
+        }
+    }
+
+    // 3. Função de Logout
+    function logout() {
+        localStorage.removeItem('token');
+        window.location.href = 'login.html';
+    }
+
+    // Inicia
+    carregarUsuario();
+  </script>
+
+</body>
+</html>

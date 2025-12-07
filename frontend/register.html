@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans&display=swap" rel="stylesheet" />
+    <title>Cadastro UERJHUB</title>
+    <link rel="stylesheet" href="./css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <style>
+        /* Pequenos ajustes específicos para o cadastro */
+        .file-upload-label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+            color: #333;
+            font-weight: bold;
+        }
+        .file-input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            background: #f1f1f1;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .warning-text {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: -10px;
+            margin-bottom: 15px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <header class="px-5 py-4" style="background: url('images/v105_14.png') no-repeat center center; background-size: cover; height: 30vh;" >
+        <span class="auth-title">Cadastro</span>
+    </header>
+    
+    <div class="espacamento"></div>
+    
+    <div class="login-container" style="margin-top: -50px;">
+        <h2>Crie sua conta</h2>
+        <p style="text-align: center; color: #666; margin-bottom: 20px;">Use seu email institucional</p>
+
+        <form id="cadastroForm">
+            
+            <div class="form-group">
+                <div class="input-with-icon">
+                    <span class="icon-background icon-left"><i class="fas fa-user"></i></span>
+                    <input type="text" id="nome" name="nome" placeholder="Nome Completo" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="input-with-icon">
+                    <span class="icon-background icon-left"><i class="fas fa-envelope"></i></span>
+                    <input type="email" id="email" name="email" placeholder="Email (@aluno.uerj.br)" required>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <div class="input-with-icon">
+                    <span class="icon-background icon-left"><i class="fas fa-lock"></i></span>
+                    <input type="password" id="senha" name="senha" placeholder="Crie uma Senha" required>
+                </div>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+
+            <div class="form-group">
+                <label class="file-upload-label"><i class="fas fa-file-pdf"></i> Enviar RID (PDF)</label>
+                <input type="file" id="rid" name="rid" accept=".pdf" class="file-input" required>
+                <span class="warning-text">* Necessário para validar suas disciplinas atuais.</span>
+            </div>
+
+            <div class="buttons-group">
+                <button type="submit" class="btn-entrar" id="btnCadastrar">Cadastrar</button>
+                <button type="button" class="btn-cadastrar" onclick="window.location.href='login.html'">Voltar para Login</button>
+            </div>
+        </form>
+        
+        <div class="logo-bottom">
+            <img src="images/v105_24.png" alt="Logo UERJ">
+        </div>
+    </div>
+
+    <form id="cadastroForm">
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+    
+        <div class="form-group">
+            <label class="file-upload-label"><i class="fas fa-file-pdf"></i> Enviar RID (PDF)</label>
+            <input type="file" id="rid" name="rid" accept=".pdf" class="file-input" required>
+            <span class="warning-text">* Usado para confirmar sua matrícula nas turmas atuais.</span>
+        </div>
+    
+        <div class="buttons-group">
+            <button type="submit" class="btn-entrar" id="btnCadastrar">Cadastrar</button>
+            <button type="button" class="btn-cadastrar" onclick="window.location.href='login.html'">Voltar</button>
+        </div>
+    </form>
+    
+    <script>
+    const cadastroForm = document.getElementById('cadastroForm');
+    const btnCadastrar = document.getElementById('btnCadastrar');
+    
+    cadastroForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+    
+        const nome = document.getElementById('nome').value;
+        const email = document.getElementById('email').value.toLowerCase();
+        const senha = document.getElementById('senha').value;
+        const ridFile = document.getElementById('rid').files[0];
+    
+        if (!email.includes('uerj.br')) {
+            alert("Use um email institucional (@uerj.br)");
+            return;
+        }
+    
+        btnCadastrar.innerText = "Processando...";
+        btnCadastrar.disabled = true;
+    
+        try {
+            const formData = new FormData();
+            formData.append('nome', nome);
+            formData.append('email', email);
+            formData.append('senha', senha);
+            formData.append('rid', ridFile);
+            // NÃO MANDA MAIS O HISTORICO
+    
+            const response = await fetch('http://localhost:8000/auth/register', {
+                method: 'POST',
+                body: formData 
+            });
+    
+            if (response.ok) {
+                alert("Cadastro realizado! Faça login.");
+                window.location.href = 'login.html';
+            } else {
+                const error = await response.json();
+                alert(`Erro: ${error.detail}`);
+            }
+    
+        } catch (error) {
+            console.error(error);
+            alert("Erro ao conectar no servidor.");
+        } finally {
+            btnCadastrar.innerText = "Cadastrar";
+            btnCadastrar.disabled = false;
+        }
+    });
+    </script>
+</body>
+</html>

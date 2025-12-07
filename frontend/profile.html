@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Perfil - UERJHUB</title>
+    <link rel="stylesheet" href="./css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="icon" type="image/x-icon" href="images/favicon.ico">
+    
+    <style>
+        /* CSS Específico para o Perfil */
+        .profile-header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-top: -50px; /* Sobrepõe o header colorido */
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .user-info h2 { margin: 0; color: #333; }
+        .user-info p { margin: 5px 0 0; color: #666; }
+
+        .btn-logout {
+            background: #ff4d4d;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn-logout:hover { background: #cc0000; }
+
+        /* Abas de Navegação */
+        .tabs {
+            display: flex;
+            margin-top: 20px;
+            gap: 10px;
+        }
+        .tab-btn {
+            background: #eee;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px 5px 0 0;
+            cursor: pointer;
+            font-weight: bold;
+            color: #555;
+            transition: 0.3s;
+        }
+        .tab-btn:hover { background: #ddd; }
+        .tab-btn.active {
+            background: #5271ff; /* Cor da sua marca */
+            color: white;
+        }
+
+        /* Conteúdo das Abas */
+        .tab-content {
+            background: white;
+            padding: 20px;
+            border-radius: 0 5px 5px 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: none; /* Escondido por padrão */
+        }
+        .tab-content.active { display: block; }
+
+        /* Lista de Disciplinas */
+        .disc-item {
+            border-bottom: 1px solid #eee;
+            padding: 15px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .disc-item:last-child { border-bottom: none; }
+        .disc-code { font-weight: bold; color: #5271ff; }
+        
+        .disc-status { 
+            font-size: 0.85em; 
+            padding: 4px 10px; 
+            border-radius: 15px; 
+            font-weight: 600;
+        }
+        .status-Aprovado { background: #d4edda; color: #155724; }
+        .status-Reprovado { background: #f8d7da; color: #721c24; }
+        .status-Cursando { background: #cce5ff; color: #004085; }
+
+        /* Área de Upload */
+        .upload-area {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            background-color: #f9f9f9;
+        }
+        .btn-toggle-upload {
+            background: none;
+            border: 1px solid #5271ff;
+            color: #5271ff;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+        .btn-toggle-upload:hover { background: #f0f4ff; }
+    </style>
+</head>
+<body>
+    <header class="px-5 py-4" style="background: url('images/v105_14.png') no-repeat center center; background-size: cover; height: 30vh;"></header>
+    
+    <div class="container" style="max-width: 800px; margin: 0 auto; padding: 20px;">
+        
+        <div class="profile-header">
+            <div class="user-info">
+                <h2 id="userName">Carregando...</h2>
+                <p id="userEmail">...</p>
+                <p style="font-size: 0.9em; margin-top: 5px;">Período Atual: <strong id="userPeriod">...</strong></p>
+            </div>
+            <button class="btn-logout" onclick="logout()">Sair</button>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="openTab('atuais')">Disciplinas Atuais</button>
+            <button class="tab-btn" onclick="openTab('historico')">Histórico Completo</button>
+        </div>
+
+        <div id="atuais" class="tab-content active">
+            <h3>Neste Semestre</h3>
+            <div id="listaAtuais">
+                <p style="color: #666; font-style: italic;">Carregando disciplinas...</p>
+            </div>
+        </div>
+
+        <div id="historico" class="tab-content">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>Disciplinas Cursadas</h3>
+                <button class="btn-toggle-upload" onclick="toggleUploadArea()">
+                    <i class="fas fa-sync-alt"></i> Atualizar Histórico
+                </button>
+            </div>
+
+            <div id="historicoAlert" style="display:none;" class="upload-area">
+                <h4 id="uploadTitle"><i class="fas fa-file-pdf" style="color: #5271ff;"></i> Importar Histórico (PDF)</h4>
+                <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">
+                    Envie seu histórico atualizado para registrar suas notas e aprovações.
+                </p>
+                <input type="file" id="historicoFile" accept=".pdf" style="margin-bottom: 10px;">
+                <br>
+                <button class="btn-cadastrar" style="width: auto; padding: 8px 20px; font-size: 0.9em;" onclick="enviarHistorico()">
+                    Enviar Arquivo
+                </button>
+            </div>
+
+            <div id="listaHistorico">
+                <p>Nenhum histórico disponível.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 1. VERIFICAÇÃO DE SEGURANÇA
+        const token = localStorage.getItem('token');
+        
+        if (!token) {
+            console.warn("Sem token, redirecionando...");
+            window.location.href = 'login.html'; 
+        }
+
+        // 2. CARREGAR DADOS DA API
+        async function carregarPerfil() {
+            try {
+                console.log("Buscando perfil...");
+                const response = await fetch('http://localhost:8000/auth/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const user = await response.json();
+                    console.log("Perfil carregado:", user);
+                    
+                    // Preenche Cabeçalho
+                    document.getElementById('userName').innerText = user.nome;
+                    document.getElementById('userEmail').innerText = user.email;
+                    document.getElementById('userPeriod').innerText = user.periodo_atual || "Não definido";
+
+                    // Preenche Disciplinas Atuais
+                    if (user.disciplinas_atuais) {
+                        renderizarAtuais(user.disciplinas_atuais, user.periodo_atual);
+                    } else {
+                        document.getElementById('listaAtuais').innerHTML = "<p>Nenhuma disciplina atual encontrada.</p>";
+                    }
+
+                    // Preenche Histórico
+                    if (!user.historico || Object.keys(user.historico).length === 0) {
+                        // Se não tem histórico, mostra a área de upload aberta por padrão
+                        document.getElementById('historicoAlert').style.display = 'block';
+                        document.getElementById('uploadTitle').innerText = "Histórico Pendente";
+                    } else {
+                        renderizarHistorico(user.historico);
+                    }
+                } else {
+                    console.error("Erro na API:", response.status);
+                    alert("Sessão expirada. Faça login novamente.");
+                    logout();
+                }
+            } catch (error) {
+                console.error("Erro de Rede:", error);
+                document.getElementById('listaAtuais').innerHTML = "<p style='color:red'>Erro ao carregar dados.</p>";
+            }
+        }
+
+        // 3. RENDERIZAR DISCIPLINAS ATUAIS
+        function renderizarAtuais(disciplinasDict, periodoAtual) {
+            const container = document.getElementById('listaAtuais');
+            
+            // CORREÇÃO: Usando a variável correta 'disciplinasDict' (com 'a', não 'disciplines')
+            const lista = disciplinasDict[periodoAtual];
+            
+            if (!lista || lista.length === 0) {
+                container.innerHTML = `<p>Você não está inscrito em turmas no período <strong>${periodoAtual}</strong>.</p>`;
+                return;
+            }
+
+            container.innerHTML = ""; 
+            lista.forEach(d => {
+                // Formata o horário se existir
+                let horarioHtml = "";
+                if (d.horario && d.horario.length > 0) {
+                    horarioHtml = `<div style="font-size: 0.85em; color: #666; margin-top: 4px;"><i class="far fa-clock"></i> ${d.horario.join(' | ')}</div>`;
+                }
+                
+                const turmaStr = d.turma ? ` - Turma ${d.turma}` : "";
+
+                const html = `
+                    <div class="disc-item">
+                        <div>
+                            <span class="disc-code">${d.codigo}${turmaStr}</span>
+                            <div style="font-weight: 500; margin-top: 2px;">${d.nome}</div>
+                            ${horarioHtml}
+                        </div>
+                        <span class="disc-status status-${d.status}">${d.status}</span>
+                    </div>
+                `;
+                container.innerHTML += html;
+            });
+        }
+
+        // 4. RENDERIZAR HISTÓRICO
+        function renderizarHistorico(historicoDict) {
+            const container = document.getElementById('listaHistorico');
+            container.innerHTML = "";
+            
+            // Ordena semestres do mais recente para o mais antigo
+            const semestres = Object.keys(historicoDict).sort().reverse();
+
+            semestres.forEach(sem => {
+                const lista = historicoDict[sem];
+                let html = `<h4 style="margin-top: 25px; margin-bottom: 10px; color: #555; border-bottom: 2px solid #eee; padding-bottom: 5px;">${sem}</h4>`;
+                
+                lista.forEach(d => {
+                    const notaHtml = d.nota !== null ? `<strong>Nota: ${d.nota}</strong>` : "<span style='color:#999'>-</span>";
+                    
+                    html += `
+                        <div class="disc-item">
+                            <div>
+                                <span class="disc-code" style="font-size:0.9em">${d.codigo}</span>
+                                <div style="font-size: 0.95em;">${d.nome}</div>
+                            </div>
+                            <div style="text-align: right; min-width: 100px;">
+                                <div style="margin-bottom: 4px;">${notaHtml}</div>
+                                <span class="disc-status status-${d.status}">${d.status}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML += html;
+            });
+        }
+
+        // 5. ENVIAR PDF DE HISTÓRICO
+        async function enviarHistorico() {
+            const fileInput = document.getElementById('historicoFile');
+            const file = fileInput.files[0];
+
+            if (!file) return alert("Selecione um arquivo PDF.");
+
+            const formData = new FormData();
+            formData.append('arquivo', file);
+
+            try {
+                const btn = document.querySelector('#historicoAlert button');
+                const textoOriginal = btn.innerText;
+                btn.innerText = "Processando...";
+                btn.disabled = true;
+                
+                const response = await fetch('http://localhost:8000/auth/me/historico', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+
+                if (response.ok) {
+                    alert("Histórico atualizado com sucesso!");
+                    location.reload(); 
+                } else {
+                    const err = await response.json();
+                    alert(`Erro: ${err.detail || "Falha ao enviar."}`);
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Erro de conexão com o servidor.");
+            } finally {
+                // Se der erro, volta o botão ao normal (se der certo, a página recarrega)
+                const btn = document.querySelector('#historicoAlert button');
+                if(btn) {
+                    btn.innerText = "Enviar Arquivo";
+                    btn.disabled = false;
+                }
+            }
+        }
+
+        // 6. UTILITÁRIOS
+        function toggleUploadArea() {
+            const area = document.getElementById('historicoAlert');
+            if (area.style.display === 'none') {
+                area.style.display = 'block';
+                document.getElementById('uploadTitle').innerText = "Atualizar Histórico";
+            } else {
+                area.style.display = 'none';
+            }
+        }
+
+        window.openTab = function(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+
+        window.logout = function() {
+            localStorage.removeItem('token');
+            window.location.href = 'login.html';
+        }
+
+        // Inicia
+        carregarPerfil();
+    </script>
+</body>
+</html>
