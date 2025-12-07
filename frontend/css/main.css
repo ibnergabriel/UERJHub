@@ -133,25 +133,24 @@ h2 {
     transition: background-color 0.2s ease;
 }
 
-.btn-entrar {
+.btn-azul {
     background-color: #007BFF; /* Azul */
     color: white;
     border: none;
     margin-right: 15px;
 }
 
-.btn-cadastrar {
+.btn-branco {
     background-color: transparent; /* Fundo transparente */
     color: #007BFF; /* Cor do texto azul */
     border: 1px solid #007BFF; /* Borda azul */
-    margin-left: 15px;
+    margin-right: 15px;
 }
-
-.btn-entrar:hover {
+.btn-azul:hover {
     background-color: #0056b3;
 }
 
-.btn-cadastrar:hover {
+.btn-branco:hover {
     background-color: #e6f0ff; /* Um fundo azul bem clarinho ao passar o mouse */
 }
 
