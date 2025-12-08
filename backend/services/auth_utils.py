@@ -77,3 +77,25 @@ async def verify_and_delete_token(email: str, token: str) -> bool:
         await coll.delete_one({"_id": record["_id"]})
         return True
     return False
+
+async def send_reset_password_email(email: str, token: str):
+    """Envia o e-mail de redefinição de senha."""
+    html = f"""
+    <div style="font-family: Arial; padding: 20px; color: #333; border: 1px solid #ddd; border-radius: 8px;">
+        <h2 style="color: #d9534f;">Recuperação de Senha</h2>
+        <p>Recebemos uma solicitação para alterar sua senha no UERJHUB.</p>
+        <p>Seu código de segurança é:</p>
+        <h1 style="background: #fdf2f2; padding: 10px; display: inline-block; border-radius: 5px; color: #d9534f; letter-spacing: 5px;">{token}</h1>
+        <p>Se você não solicitou essa alteração, ignore este e-mail. Sua senha permanecerá a mesma.</p>
+        <p><small>Este código expira em {TOKEN_EXPIRATION_MINUTES} minutos.</small></p>
+    </div>
+    """
+
+    message = MessageSchema(
+        subject="Redefinir Senha - UERJHUB",
+        recipients=[email],
+        body=html,
+        subtype=MessageType.html
+    )
+
+    await fm.send_message(message)

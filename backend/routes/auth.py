@@ -1,16 +1,17 @@
-# backend/routes/auth.py
 import traceback
 from typing import List
 from services.utils import get_system_semester
 import bcrypt
 from bson import ObjectId
 from database import db
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Body, Depends
+from fastapi import (APIRouter, Body, Depends, File, Form, HTTPException,
+                     UploadFile)
 from models import DisciplinaAluno, Discipline, User
 from pydantic import BaseModel, EmailStr
 from security import get_current_user
 # Imports da NOVA lógica de autenticação
 from services.auth_utils import (generate_six_digit_token, save_token_to_db,
+                                 send_reset_password_email,
                                  send_validation_email,
                                  validar_dominio_graduacao,
                                  verify_and_delete_token)
@@ -105,7 +106,7 @@ async def register(
         if await users_col.find_one({"email": email}):
             raise HTTPException(400, "Email já cadastrado.")
 
-        # 2. Hash da senha
+        # 3. Hash da senha
         hashed = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
 
         # 3. Busca o semestre ativo no sistema (ex: "2025.1")
@@ -121,11 +122,14 @@ async def register(
             periodo_atual=semestre_inicial # Já nasce no semestre certo
         )
 
+        # 5. Salva no Banco
         res = await users_col.insert_one(new_user.model_dump(by_alias=True, exclude=["id"]))
         user_id = res.inserted_id
         
         return await users_col.find_one({"_id": user_id})
 
+    except HTTPException as he:
+        raise he
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(500, f"Erro interno: {str(e)}")
@@ -139,10 +143,7 @@ async def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
 
 
-# ROTA 3: IMPORTAR DISCPLINAS EM CURSO
-# No topo do arquivo, garanta que Set está importado
-# from bson import ObjectId
-
+# ROTA 4: IMPORTAR DISCPLINAS EM CURSO
 @router.post("/me/importar-rid")
 async def upload_rid_grade(
     arquivo: UploadFile = File(...),
@@ -253,7 +254,7 @@ async def upload_rid_grade(
         traceback.print_exc()
         raise HTTPException(500, f"Erro ao importar RID: {str(e)}")
 
-# ROTA 4: ENVIAR HISTÓRICO
+# ROTA 5: ENVIAR HISTÓRICO
 @router.post("/me/historico")
 async def upload_historico(
     arquivo: UploadFile = File(...),
