@@ -8,7 +8,9 @@ from bson import ObjectId
 
 router = APIRouter()
 
-# 1. LISTAR PROFESSORES (Com filtro opcional)
+# ==========================================
+# 1. LISTAR PROFESSORES
+# ==========================================
 @router.get("/", response_model=List[Professor])
 async def list_professors(
     search: str = None, 
@@ -17,16 +19,19 @@ async def list_professors(
 ):
     query = {}
     
-    # Filtro simples por nome (case insensitive)
+    # Filtro por nome (case insensitive)
     if search:
         query["nome"] = {"$regex": search, "$options": "i"}
     
     if departamento:
         query["departamento"] = departamento
         
+    # Retorna lista limitada a 100 para não pesar
     return await db.get_collection("professors").find(query).to_list(100)
 
-# 2. CADASTRAR PROFESSOR (Manualmente)
+# ==========================================
+# 2. CADASTRAR PROFESSOR
+# ==========================================
 @router.post("/", response_model=Professor, status_code=201)
 async def create_professor(
     professor: Professor,
@@ -34,12 +39,18 @@ async def create_professor(
 ):
     """
     Cadastra um novo professor.
-    O índice único no banco (Nome+Email+Dept) impede duplicatas.
+    Aceita qualquer e-mail válido (Gmail, Hotmail, UERJ...),
+    pois não há restrição de domínio aqui.
     """
+    prof_col = db.get_collection("professors")
+
+    # 1. Verifica duplicidade de E-mail manualmente para dar erro legível
+    if await prof_col.find_one({"email": professor.email}):
+        raise HTTPException(status_code=400, detail="Este e-mail já está cadastrado para outro professor.")
+
     try:
-        prof_col = db.get_collection("professors")
-        
-        # Insere (feedbacks começa vazio por padrão no model)
+        # 2. Insere no banco
+        # O model_dump já valida o formato do email se você usou EmailStr no models.py
         new_prof = await prof_col.insert_one(
             professor.model_dump(by_alias=True, exclude=["id"])
         )
@@ -47,11 +58,14 @@ async def create_professor(
         return await prof_col.find_one({"_id": new_prof.inserted_id})
         
     except DuplicateKeyError:
-        raise HTTPException(status_code=400, detail="Professor já cadastrado com estes dados.")
+        raise HTTPException(status_code=400, detail="Professor duplicado no banco de dados.")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Erro ao criar professor: {e}")
+        raise HTTPException(status_code=500, detail="Erro interno ao cadastrar professor.")
 
-# 3. ADICIONAR FEEDBACK (Avaliação)
+# ==========================================
+# 3. ADICIONAR FEEDBACK
+# ==========================================
 @router.post("/{professor_id}/feedback")
 async def add_feedback(
     professor_id: str, 
@@ -59,19 +73,18 @@ async def add_feedback(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Adiciona nota e comentário.
-    O user_id vem do Token (seguro).
+    Adiciona nota e comentário à lista de feedbacks do professor.
     """
     prof_col = db.get_collection("professors")
     
-    # Monta o objeto Feedback interno
+    # Cria objeto de feedback vinculado ao usuário logado
     novo_feedback = Feedback(
-        user_id=current_user.id,
+        user_id=str(current_user.id), # Converte ID do usuário para string
         nota=feedback_in.nota,
         comentario=feedback_in.comentario
     )
     
-    # Adiciona na lista 'feedbacks' do professor
+    # Atualiza o documento do professor ($push adiciona ao array)
     result = await prof_col.update_one(
         {"_id": ObjectId(professor_id)},
         {"$push": {"feedbacks": novo_feedback.model_dump()}}

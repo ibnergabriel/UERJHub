@@ -11,115 +11,87 @@
     <style>
         /* CSS Específico para o Perfil */
         .profile-header {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            margin-top: -50px; /* Sobrepõe o header colorido */
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            background: white; padding: 20px; border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-top: -50px;
+            position: relative; display: flex; align-items: center; justify-content: space-between;
         }
 
         .user-info h2 { margin: 0; color: #333; }
         .user-info p { margin: 5px 0 0; color: #666; }
 
         .btn-logout {
-            background: #ff4d4d;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: 0.3s;
+            background: #ff4d4d; color: white; border: none; padding: 8px 15px;
+            border-radius: 5px; cursor: pointer; transition: 0.3s;
         }
         .btn-logout:hover { background: #cc0000; }
 
-        /* Abas de Navegação */
-        .tabs {
-            display: flex;
-            margin-top: 20px;
-            gap: 10px;
-        }
+        /* Abas */
+        .tabs { display: flex; margin-top: 20px; gap: 10px; }
         .tab-btn {
-            background: #eee;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px 5px 0 0;
-            cursor: pointer;
-            font-weight: bold;
-            color: #555;
-            transition: 0.3s;
+            background: #eee; border: none; padding: 10px 20px; border-radius: 5px 5px 0 0;
+            cursor: pointer; font-weight: bold; color: #555; transition: 0.3s;
         }
         .tab-btn:hover { background: #ddd; }
-        .tab-btn.active {
-            background: #5271ff; /* Cor da sua marca */
-            color: white;
-        }
-
-        /* Conteúdo das Abas */
+        .tab-btn.active { background: #5271ff; color: white; }
         .tab-content {
-            background: white;
-            padding: 20px;
-            border-radius: 0 5px 5px 5px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            display: none; /* Escondido por padrão */
+            background: white; padding: 20px; border-radius: 0 5px 5px 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: none;
         }
         .tab-content.active { display: block; }
 
-        /* Lista de Disciplinas */
+        /* Lista */
         .disc-item {
-            border-bottom: 1px solid #eee;
-            padding: 15px 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            border-bottom: 1px solid #eee; padding: 15px 0; display: flex;
+            justify-content: space-between; align-items: center;
         }
         .disc-item:last-child { border-bottom: none; }
         .disc-code { font-weight: bold; color: #5271ff; }
         
         .disc-status { 
-            font-size: 0.85em; 
-            padding: 4px 10px; 
-            border-radius: 15px; 
-            font-weight: 600;
+            font-size: 0.85em; padding: 4px 10px; border-radius: 15px; font-weight: 600;
         }
         .status-Aprovado { background: #d4edda; color: #155724; }
         .status-Reprovado { background: #f8d7da; color: #721c24; }
         .status-Cursando { background: #cce5ff; color: #004085; }
 
-        /* Área de Upload */
+        /* Upload Area */
         .upload-area {
-            border: 2px dashed #ccc;
-            padding: 20px;
-            text-align: center;
-            margin-bottom: 20px;
-            border-radius: 10px;
-            background-color: #f9f9f9;
+            border: 2px dashed #ccc; padding: 20px; text-align: center;
+            margin-bottom: 20px; border-radius: 10px; background-color: #f9f9f9;
         }
         .btn-toggle-upload {
-            background: none;
-            border: 1px solid #5271ff;
-            color: #5271ff;
-            padding: 5px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.9em;
-            margin-bottom: 15px;
+            background: none; border: 1px solid #5271ff; color: #5271ff;
+            padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.9em;
         }
         .btn-toggle-upload:hover { background: #f0f4ff; }
 
-        /* Botão Genérico reutilizado do CSS principal */
         .btn-cadastrar {
-            background: #5271ff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
+            background: #5271ff; color: white; border: none; padding: 10px 20px;
+            border-radius: 5px; cursor: pointer;
         }
         .btn-cadastrar:hover { background: #405bd4; }
+
+        /* Botão de Remover Turmas */
+        .btn-danger-outline {
+            background: white; border: 1px solid #ff4d4d; color: #ff4d4d;
+            padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.9em; margin-left: 10px;
+        }
+        .btn-danger-outline:hover { background: #fff0f0; }
+
+        /* Modal de Ajuda */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal-box {
+            background: white; padding: 30px; border-radius: 10px; max-width: 500px; width: 90%;
+            position: relative;
+        }
+        .close-modal {
+            position: absolute; top: 10px; right: 15px; font-size: 1.5em; cursor: pointer; color: #999;
+        }
+        .help-step { margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .help-step strong { color: #5271ff; }
     </style>
 </head>
 <body>
@@ -142,18 +114,27 @@
         </div>
 
         <div id="atuais" class="tab-content active">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h3>Neste Semestre</h3>
-                <button class="btn-toggle-upload" onclick="toggleUploadRID()">
-                    <i class="fas fa-sync-alt"></i> Importar disciplinas em curso
-                </button>
+                <div>
+                    <button id="btnRemoverTudo" class="btn-danger-outline" style="display:none;" onclick="removerTodasDisciplinas()">
+                        <i class="fas fa-trash"></i> Sair de Todas
+                    </button>
+                    <button class="btn-toggle-upload" onclick="toggleUploadRID()">
+                        <i class="fas fa-sync-alt"></i> Importar disciplinas
+                    </button>
+                </div>
             </div>
 
             <div id="ridAlert" style="display:none;" class="upload-area">
-                <h4><i class="fas fa-file-pdf" style="color: #5271ff;"></i> Importar disciplinas em curso </h4>
+                <h4><i class="fas fa-file-pdf" style="color: #5271ff;"></i> Importar Disciplinas em Curso</h4>
                 <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">
-                    Envie suas <b> Disciplinas em Curso </b> em PDF, obtidas no aluno online, para atualizar suas matérias e horários.
+                    Envie o PDF gerado no Aluno Online. <br>
+                    <a href="#" onclick="abrirAjudaRID()" style="color: #5271ff; text-decoration: underline;">
+                        <i class="fas fa-question-circle"></i> Como obter esse arquivo?
+                    </a>
                 </p>
+                
                 <input type="file" id="ridFile" accept=".pdf" style="margin-bottom: 10px;">
                 <br>
                 <button class="btn-cadastrar" style="width: auto; padding: 8px 20px; font-size: 0.9em;" onclick="enviarRID()">
@@ -176,9 +157,6 @@
 
             <div id="historicoAlert" style="display:none;" class="upload-area">
                 <h4 id="uploadTitle"><i class="fas fa-file-pdf" style="color: #5271ff;"></i> Importar Histórico (PDF)</h4>
-                <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">
-                    Envie seu histórico atualizado para registrar suas notas e aprovações.
-                </p>
                 <input type="file" id="historicoFile" accept=".pdf" style="margin-bottom: 10px;">
                 <br>
                 <button class="btn-cadastrar" style="width: auto; padding: 8px 20px; font-size: 0.9em;" onclick="enviarHistorico()">
@@ -192,78 +170,88 @@
         </div>
     </div>
 
-    <script>
-        // 1. VERIFICAÇÃO DE SEGURANÇA
-        const token = localStorage.getItem('token');
-        
-        if (!token) {
-            console.warn("Sem token, redirecionando...");
-            window.location.href = 'login.html'; 
-        }
+    <div id="modalAjuda" class="modal-overlay">
+        <div class="modal-box">
+            <span class="close-modal" onclick="fecharAjudaRID()">&times;</span>
+            <h3 style="color: #5271ff; margin-top: 0;">Como obter o RID?</h3>
+            
+            <div class="help-step">
+                <strong>Passo 1:</strong> Acesse o <a href="https://www.alunoonline.uerj.br/" target="_blank">Aluno Online</a>.
+            </div>
+            <div class="help-step">
+                <strong>Passo 2:</strong> No menu, vá em <em>Disciplinas em Curso</em>.
+            </div>
+            <div class="help-step">
+                <strong>Passo 3:</strong> Clique no botão de Imprimir do menu do seu navegado. 
+            </div>
+            <div class="help-step" style="border-bottom: none;">
+                <strong>Passo 4:</strong> Na hora de salvar, escolha <strong>Salvar como PDF</strong> no destino da impressão.
+            </div>
+            
+            <div style="background: #fff3cd; padding: 10px; border-radius: 5px; font-size: 0.9em; color: #856404;">
+                <i class="fas fa-exclamation-triangle"></i> Importante: O arquivo deve conter o título "Disciplinas em Curso".
+            </div>
+        </div>
+    </div>
 
-        // 2. CARREGAR DADOS DA API
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) { window.location.href = 'login.html'; }
+
+        // --- CARREGAR DADOS ---
         async function carregarPerfil() {
             try {
-                console.log("Buscando perfil...");
                 const response = await fetch('http://localhost:8000/auth/me', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
 
                 if (response.ok) {
                     const user = await response.json();
-                    console.log("Perfil carregado:", user);
                     
-                    // Preenche Cabeçalho
                     document.getElementById('userName').innerText = user.nome;
                     document.getElementById('userEmail').innerText = user.email;
                     document.getElementById('userPeriod').innerText = user.periodo_atual || "Não definido";
 
-                    // Preenche Disciplinas Atuais
-                    if (user.disciplinas_atuais && user.periodo_atual) {
+                    // Renderiza Atuais
+                    if (user.disciplinas_atuais && user.periodo_atual && user.disciplinas_atuais[user.periodo_atual]) {
                         renderizarAtuais(user.disciplinas_atuais, user.periodo_atual);
                     } else {
                         document.getElementById('listaAtuais').innerHTML = "<p>Nenhuma grade carregada para este período.</p>";
-                        // Abre a caixa de upload se não tiver nada
                         document.getElementById('ridAlert').style.display = 'block';
+                        // Esconde botão de remover se não tem nada
+                        document.getElementById('btnRemoverTudo').style.display = 'none';
                     }
 
-                    // Preenche Histórico
+                    // Renderiza Histórico
                     if (!user.historico || Object.keys(user.historico).length === 0) {
                         document.getElementById('listaHistorico').innerHTML = "<p>Sem histórico importado.</p>";
                     } else {
                         renderizarHistorico(user.historico);
                     }
                 } else {
-                    console.error("Erro na API:", response.status);
-                    alert("Sessão expirada. Faça login novamente.");
-                    logout();
+                    alert("Sessão expirada."); logout();
                 }
-            } catch (error) {
-                console.error("Erro de Rede:", error);
-                document.getElementById('listaAtuais').innerHTML = "<p style='color:red'>Erro ao carregar dados.</p>";
-            }
+            } catch (error) { console.error(error); }
         }
 
-        // 3. RENDERIZAR DISCIPLINAS ATUAIS
         function renderizarAtuais(disciplinasDict, periodoAtual) {
             const container = document.getElementById('listaAtuais');
             const lista = disciplinasDict[periodoAtual];
             
             if (!lista || lista.length === 0) {
                 container.innerHTML = `<p>Você não está inscrito em turmas no período <strong>${periodoAtual}</strong>.</p>`;
+                document.getElementById('btnRemoverTudo').style.display = 'none';
                 return;
             }
 
+            // Mostra o botão de remover se houver disciplinas
+            document.getElementById('btnRemoverTudo').style.display = 'inline-block';
+
             container.innerHTML = ""; 
             lista.forEach(d => {
-                // Formata o horário se existir
-                let horarioHtml = "";
-                if (d.horario && d.horario.length > 0) {
-                    // Ordena horários visualmente se vierem bagunçados (opcional)
-                    horarioHtml = `<div style="font-size: 0.85em; color: #666; margin-top: 4px;">
-                        <i class="far fa-clock"></i> ${d.horario.join(' | ')}
-                    </div>`;
-                }
+                let horarioHtml = d.horario && d.horario.length > 0 
+                    ? `<div style="font-size: 0.85em; color: #666; margin-top: 4px;"><i class="far fa-clock"></i> ${d.horario.join(' | ')}</div>`
+                    : "";
                 
                 const turmaStr = d.turma ? ` - Turma ${d.turma}` : "";
 
@@ -281,75 +269,7 @@
             });
         }
 
-        // 4. RENDERIZAR HISTÓRICO
-        function renderizarHistorico(historicoDict) {
-            const container = document.getElementById('listaHistorico');
-            container.innerHTML = "";
-            
-            const semestres = Object.keys(historicoDict).sort().reverse();
-
-            semestres.forEach(sem => {
-                const lista = historicoDict[sem];
-                let html = `<h4 style="margin-top: 25px; margin-bottom: 10px; color: #555; border-bottom: 2px solid #eee; padding-bottom: 5px;">${sem}</h4>`;
-                
-                lista.forEach(d => {
-                    const notaHtml = d.nota !== null ? `<strong>Nota: ${d.nota}</strong>` : "<span style='color:#999'>-</span>";
-                    
-                    html += `
-                        <div class="disc-item">
-                            <div>
-                                <span class="disc-code" style="font-size:0.9em">${d.codigo}</span>
-                                <div style="font-size: 0.95em;">${d.nome}</div>
-                            </div>
-                            <div style="text-align: right; min-width: 100px;">
-                                <div style="margin-bottom: 4px;">${notaHtml}</div>
-                                <span class="disc-status status-${d.status}">${d.status}</span>
-                            </div>
-                        </div>
-                    `;
-                });
-                container.innerHTML += html;
-            });
-        }
-
-        // 5. ENVIAR PDF DE HISTÓRICO
-        async function enviarHistorico() {
-            const fileInput = document.getElementById('historicoFile');
-            const file = fileInput.files[0];
-
-            if (!file) return alert("Selecione um arquivo PDF.");
-
-            const formData = new FormData();
-            formData.append('arquivo', file);
-
-            try {
-                const btn = document.querySelector('#historicoAlert button');
-                btn.innerText = "Processando...";
-                btn.disabled = true;
-                
-                const response = await fetch('http://localhost:8000/auth/me/historico', {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` },
-                    body: formData
-                });
-
-                if (response.ok) {
-                    alert("Histórico atualizado com sucesso!");
-                    location.reload(); 
-                } else {
-                    const err = await response.json();
-                    alert(`Erro: ${err.detail || "Falha ao enviar."}`);
-                }
-            } catch (e) {
-                console.error(e);
-                alert("Erro de conexão com o servidor.");
-            } finally {
-                const btn = document.querySelector('#historicoAlert button');
-                if(btn) { btn.innerText = "Enviar Arquivo"; btn.disabled = false; }
-            }
-        }
-
-        // 6. ENVIAR PDF DO RID (NOVA FUNÇÃO)
+        // --- ENVIAR RID (COM VALIDAÇÃO) ---
         async function enviarRID() {
             const fileInput = document.getElementById('ridFile');
             const file = fileInput.files[0];
@@ -361,10 +281,10 @@
 
             try {
                 const btn = document.querySelector('#ridAlert button');
-                btn.innerText = "Lendo PDF...";
+                const originalText = btn.innerText;
+                btn.innerText = "Verificando...";
                 btn.disabled = true;
                 
-                // Rota nova que criamos no backend
                 const response = await fetch('http://localhost:8000/auth/me/importar-rid', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` },
@@ -373,30 +293,79 @@
 
                 if (response.ok) {
                     const data = await response.json();
-                    alert(`Grade importada! ${data.disciplinas_count || ''} disciplinas encontradas.`);
+                    alert(`Sucesso! ${data.turmas_adicionadas} turmas encontradas.`);
                     location.reload(); 
                 } else {
                     const err = await response.json();
-                    alert(`Erro: ${err.detail || "Falha ao ler o RID."}`);
+                    // Mostra o erro específico vindo do backend (Ex: "PDF Inválido...")
+                    alert(`Erro: ${err.detail || "Falha ao ler o arquivo."}`);
                 }
             } catch (e) {
-                console.error(e);
-                alert("Erro de conexão com o servidor.");
+                alert("Erro de conexão.");
             } finally {
                 const btn = document.querySelector('#ridAlert button');
                 if(btn) { btn.innerText = "Atualizar Grade"; btn.disabled = false; }
             }
         }
 
-        // 7. UTILITÁRIOS
+        // --- REMOVER TODAS AS DISCIPLINAS ---
+        async function removerTodasDisciplinas() {
+            if(!confirm("Tem certeza? Isso removerá você de todas as turmas atuais e dos painéis de avisos.")) return;
+
+            try {
+                const res = await fetch('http://localhost:8000/auth/me/disciplinas-atuais', {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if(res.ok) {
+                    alert("Grade limpa com sucesso.");
+                    location.reload();
+                } else {
+                    alert("Erro ao remover disciplinas.");
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        // --- FUNÇÕES DE INTERFACE ---
+        function toggleUploadRID() {
+            const area = document.getElementById('ridAlert');
+            area.style.display = area.style.display === 'none' ? 'block' : 'none';
+        }
         function toggleUploadHistorico() {
             const area = document.getElementById('historicoAlert');
             area.style.display = area.style.display === 'none' ? 'block' : 'none';
         }
+        function abrirAjudaRID() { document.getElementById('modalAjuda').style.display = 'flex'; }
+        function fecharAjudaRID() { document.getElementById('modalAjuda').style.display = 'none'; }
         
-        function toggleUploadRID() {
-            const area = document.getElementById('ridAlert');
-            area.style.display = area.style.display === 'none' ? 'block' : 'none';
+        // Histórico (Mantido igual)
+        function renderizarHistorico(historicoDict) {
+            const container = document.getElementById('listaHistorico');
+            container.innerHTML = "";
+            const semestres = Object.keys(historicoDict).sort().reverse();
+            semestres.forEach(sem => {
+                const lista = historicoDict[sem];
+                let html = `<h4 style="margin-top:25px;margin-bottom:10px;color:#555;border-bottom:2px solid #eee;">${sem}</h4>`;
+                lista.forEach(d => {
+                    const notaHtml = d.nota !== null ? `<strong>Nota: ${d.nota}</strong>` : "<span style='color:#999'>-</span>";
+                    html += `<div class="disc-item"><div><span class="disc-code" style="font-size:0.9em">${d.codigo}</span><div style="font-size:0.95em;">${d.nome}</div></div><div style="text-align:right;min-width:100px;"><div style="margin-bottom:4px;">${notaHtml}</div><span class="disc-status status-${d.status}">${d.status}</span></div></div>`;
+                });
+                container.innerHTML += html;
+            });
+        }
+        async function enviarHistorico() {
+            /* (Mesma lógica de antes...) */
+            const file = document.getElementById('historicoFile').files[0];
+            if (!file) return alert("Selecione um arquivo PDF.");
+            const formData = new FormData(); formData.append('arquivo', file);
+            try {
+                const res = await fetch('http://localhost:8000/auth/me/historico', {
+                    method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData
+                });
+                if (res.ok) { alert("Histórico atualizado!"); location.reload(); }
+                else { const err = await res.json(); alert(`Erro: ${err.detail}`); }
+            } catch (e) { alert("Erro conexão."); }
         }
 
         window.openTab = function(tabName) {
@@ -405,13 +374,8 @@
             document.getElementById(tabName).classList.add('active');
             event.currentTarget.classList.add('active');
         }
+        window.logout = function() { localStorage.removeItem('token'); window.location.href = 'login.html'; }
 
-        window.logout = function() {
-            localStorage.removeItem('token');
-            window.location.href = 'login.html';
-        }
-
-        // Inicia
         carregarPerfil();
     </script>
 </body>

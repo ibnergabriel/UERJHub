@@ -57,3 +57,15 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         
     # Retorna o objeto User completo (agora sabemos quem ele é!)
     return User(**user)
+
+async def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
+    """
+    Verifica se o usuário logado tem a role 'admin'.
+    Se não tiver, lança erro 403 (Proibido).
+    """
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso negado. Requer privilégios de administrador."
+        )
+    return current_user
