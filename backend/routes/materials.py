@@ -18,17 +18,15 @@ async def upload_material(
     professor_id: str = Form(...),
     titulo: str = Form(...),
     tipo: MaterialTipo = Form(...),
-    # REMOVIDO: aluno_id: str = Form(...),  <--- Não confiamos mais no ID enviado pelo form
     file: UploadFile = File(...),
     
-    # ADICIONADO: O Token é validado aqui. Se falhar, nem roda a função.
     current_user: User = Depends(get_current_user) 
 ):
     """
     Recebe um arquivo (PDF, PPT, etc), salva na pasta /uploads
     e registra o caminho no banco de dados.
     """
-    # 1. Validação simples de extensão (Opcional)
+    # 1. Validação simples de extensão
     # Garante que o usuário não suba um .exe ou script malicioso
     allowed_extensions = {".pdf", ".pptx", ".ppt", ".docx", ".doc", ".zip", ".png", ".jpg"}
     filename_lower = file.filename.lower()
@@ -39,8 +37,7 @@ async def upload_material(
     if ext not in allowed_extensions:
         raise HTTPException(400, f"Extensão {ext} não permitida. Use PDF, PPTX, DOCX ou Imagem.")
 
-    # 2. Gerar nome único para o arquivo (UUID)
-    # Ex: a1b2c3d4-1234.pdf
+    # 2. Gerar nome único para o arquivo
     novo_nome = f"{uuid.uuid4()}{ext}"
     caminho_arquivo = os.path.join(UPLOAD_DIR, novo_nome)
 
@@ -51,13 +48,11 @@ async def upload_material(
     except Exception as e:
         raise HTTPException(500, f"Erro ao salvar arquivo: {e}")
 
-    # 4. Gerar a URL Pública
-    # No frontend, você usará: http://localhost:8000/arquivos/{novo_nome}
     url_final = f"/arquivos/{novo_nome}"
 
     # 5. Salvar metadados no MongoDB
     mat_col = db.get_collection("materials")
-    semestre_key = semestre.replace(".", "_") # Mongo não aceita ponto em chave
+    semestre_key = semestre.replace(".", "_") 
     
     novo_arquivo_obj = ArquivoMaterial(
         titulo=titulo,

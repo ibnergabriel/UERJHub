@@ -210,11 +210,11 @@ async def wipe_disciplines_only(
 
     # 2. Decide o que fazer com a coleção global
     if hard_delete:
-        # --- MODO DESTRUTIVO: Apaga os documentos da coleção ---
+        # --- MODO A: Apaga os documentos da coleção ---
         res_disc = await disc_col.delete_many({})
         msg_disciplinas = f"{res_disc.deleted_count} turmas globais foram APAGADAS do sistema."
     else:
-        # --- MODO SUAVE: Apenas esvazia a lista de chamada ---
+        # --- MODO B: Apenas esvazia a lista de chamada ---
         res_disc = await disc_col.update_many(
             {},
             {"$set": {"membros": []}}

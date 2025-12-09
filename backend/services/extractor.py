@@ -155,7 +155,7 @@ class UERJExtractor:
                                     disciplinas_map[codigo]["horario"].append(final_str)
 
         except Exception as e:
-            print(f"❌ Erro PDF DISCIPLINAS EM CURSO: {e}")
+            print(f" Erro PDF DISCIPLINAS EM CURSO: {e}")
             return {}
 
         dias_ordem = {"Seg": 0, "Ter": 1, "Qua": 2, "Qui": 3, "Sex": 4, "Sab": 5}

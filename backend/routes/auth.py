@@ -56,7 +56,7 @@ async def get_or_create_global_id(codigo: str, nome: str, turma: str, semestre: 
 
 
 # ==========================================
-# 🚀 ROTA 1: SOLICITAR TOKEN
+# ROTA 1: SOLICITAR TOKEN
 # ==========================================
 @router.post("/request-token")
 async def request_token(payload: TokenRequest):
@@ -85,7 +85,7 @@ async def request_token(payload: TokenRequest):
 
 
 # ==========================================
-# 🚀 ROTA 2: CADASTRO FINAL 
+# ROTA 2: CADASTRO FINAL 
 # ==========================================
 @router.post("/register", response_model=User, status_code=201)
 async def register(

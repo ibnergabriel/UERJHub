@@ -24,7 +24,7 @@ class FeedbackInput(BaseModel):
     comentario: Optional[str] = Field(None, max_length=500)
     # user_id e data serão inseridos pelo sistema
 
-# --- 1. Usuários e Disciplinas (Mantidos do anterior) ---
+# --- 1. Usuários e Disciplinas ---
 class DisciplinaAluno(BaseModel):
     codigo: str
     nome: str
@@ -50,7 +50,7 @@ class User(BaseModel):
     nome: str
     email: EmailStr
     senha_hash: str
-    role: str = "student" # <--- NOVO CAMPO (student ou admin)
+    role: str = "student" # student ou admin
     # periodo_atual: str = "2025.1"
     disciplinas_atuais: Dict[str, List[dict]] = {}
     historico: Dict[str, List[dict]] = {}
@@ -120,5 +120,5 @@ class WarningModel(MongoBaseModel):
     autor_id: PyObjectId
     titulo: str
     mensagem: str
-    validade: Optional[datetime] = None # Data para o aviso sumir (opcional)
+    validade: Optional[datetime] = None # Data para o aviso sumir ? Não foi implementado
     created_at: datetime = Field(default_factory=datetime.now)
