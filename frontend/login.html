@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - UERJHUB</title>
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,600,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="icon" type="image/x-icon" href="images/favicon.ico"> 
+</head>
+
+    <header class="px-5 py-4" style="background: url('images/v105_14.png') no-repeat center center; background-size: cover; height: 50vh;" >
+        <span class="auth-title">Autenticação</span>
+            <div>
+                <img src="images/v105_14.png" alt="Árvore UERJ" style="width: 1000px; height: auto; display: none;">
+            </div>
+    </header>
+
+<body>    
+    <div class="espacamento"></div>
+    <!-- <div class="v172_551"></div> -->
+    
+    <style>
+        /* RESET BÁSICO */
+        * { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
+        
+        body {
+            font-family: 'Open Sans', sans-serif;
+            height: 100vh; /* Altura total da tela */
+            display: flex;
+            align-items: center;     /* Centraliza Verticalmente */
+            justify-content: center; /* Centraliza Horizontalmente */
+            
+            /* Imagem de Fundo com sobreposição escura para ler melhor */
+            background: linear-gradient(rgba(0, 50, 100, 0.6), rgba(0, 50, 100, 0.6)), 
+                        url('images/v105_14.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        /* O CARD DE LOGIN */
+        .login-card {
+            background-color: white;
+            width: 100%;
+            max-width: 400px; /* Largura máxima elegante */
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3); /* Sombra suave */
+            text-align: center;
+            position: relative;
+        }
+
+        /* LOGO E TÍTULOS */
+        .login-card img.logo {
+            width: 80px;
+            margin-bottom: 15px;
+        }
+
+        .login-card h2 {
+            color: #333;
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+
+        .login-card p.subtitle {
+            color: #777;
+            font-size: 0.9em;
+            margin-bottom: 30px;
+        }
+
+        /* INPUTS */
+        .input-group {
+            position: relative;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .input-group i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #888;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 15px 12px 45px; /* Espaço para o ícone */
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+            background: #f9f9f9;
+        }
+
+        .input-group input:focus {
+            border-color: #004aad; /* Azul UERJ */
+            background: #fff;
+        }
+
+        /* LINKS (Esqueci senha) */
+        .forgot-link {
+            display: block;
+            text-align: right;
+            font-size: 0.85em;
+            color: #004aad;
+            text-decoration: none;
+            margin-bottom: 25px;
+            margin-top: -10px;
+        }
+        .forgot-link:hover { text-decoration: underline; }
+
+        /* BOTÕES */
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+
+        .btn-primary {
+            background-color: #004aad; /* Azul principal */
+            color: white;
+            margin-bottom: 15px;
+        }
+        .btn-primary:hover { background-color: #003380; transform: translateY(-2px); }
+
+        .btn-outline {
+            background-color: transparent;
+            border: 2px solid #004aad;
+            color: #004aad;
+        }
+        .btn-outline:hover { background-color: #eef4ff; }
+
+        /* Utilitário para desabilitar botão */
+        .btn:disabled { opacity: 0.7; cursor: not-allowed; }
+
+    </style>
+</head>
+<body>
+
+    <div class="login-card">
+        <img src="images/v105_24.png" alt="Logo UERJ" class="logo">
+        
+        <h2>Bem-vindo</h2>
+        <p class="subtitle">Faça login para acessar o UERJHUB</p>
+
+        <form id="loginForm">
+            <div class="input-group">
+                <i class="fas fa-envelope"></i>
+                <input type="email" id="usuario" placeholder="seu_email@graduacao.uerj.br" required>
+            </div>
+
+            <div class="input-group">
+                <i class="fas fa-lock"></i>
+                <input type="password" id="senha" placeholder="Sua senha" required>
+            </div>
+
+            <a href="forgot_password.html" class="forgot-link">Esqueceu a senha?</a>
+
+            <button type="submit" class="btn btn-primary" id="btnEntrar">ENTRAR</button>
+            <button type="button" class="btn btn-outline" onclick="window.location.href='register.html'">CRIAR CONTA</button>
+        </form>
+    </div>
+
+    <script>
+        const API_URL = "http://localhost:8000"; 
+        const loginForm = document.getElementById('loginForm');
+        const btnEntrar = document.getElementById('btnEntrar');
+
+        loginForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const email = document.getElementById('usuario').value;
+            const password = document.getElementById('senha').value;
+
+            // Feedback visual
+            const textoOriginal = btnEntrar.innerText;
+            btnEntrar.innerText = "VERIFICANDO...";
+            btnEntrar.disabled = true;
+            btnEntrar.style.cursor = "wait";
+
+            try {
+                // OAuth2 exige form-urlencoded
+                const formData = new URLSearchParams();
+                formData.append('username', email);
+                formData.append('password', password);
+
+                const response = await fetch(`${API_URL}/token`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    localStorage.setItem('token', data.access_token);
+                    // Redireciona
+                    window.location.href = 'dashboard.html'; 
+                } else {
+                    const errorData = await response.json();
+                    alert(`Erro: ${errorData.detail || 'Dados incorretos'}`);
+                }
+
+            } catch (error) {
+                console.error("Erro:", error);
+                alert("Erro de conexão com o servidor.");
+            } finally {
+                btnEntrar.innerText = textoOriginal;
+                btnEntrar.disabled = false;
+                btnEntrar.style.cursor = "pointer";
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professores - UERJHUB</title>
+    <link rel="stylesheet" href="./css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="icon" type="image/x-icon" href="images/favicon.ico">
+    
+    <style>
+        .search-bar {
+            display: flex; gap: 10px; margin-bottom: 30px; margin-top: -50px;
+            position: relative; z-index: 2; justify-content: center;
+        }
+        .search-input {
+            padding: 15px; width: 100%; max-width: 500px;
+            border-radius: 30px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            font-size: 1rem; outline: none;
+        }
+        .btn-add {
+            background: #28a745; color: white; border: none; border-radius: 50%;
+            width: 50px; height: 50px; font-size: 24px; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: 0.3s;
+        }
+        .btn-add:hover { transform: scale(1.1); }
+
+        /* GRID PROFESSORES */
+        .prof-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px;
+        }
+        .prof-card {
+            background: white; border-radius: 15px; padding: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05); cursor: pointer;
+            transition: 0.3s; border-top: 5px solid #0b84c8;
+            text-align: center;
+        }
+        .prof-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+        
+        .rating-stars { color: #ffc107; font-size: 1.1em; margin: 10px 0; }
+        
+        /* MODAL */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: white; width: 90%; max-width: 600px; max-height: 90vh;
+            border-radius: 15px; padding: 25px; overflow-y: auto; position: relative;
+        }
+        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 1.5rem; cursor: pointer; color: #999; }
+
+        /* FORMULÁRIOS */
+        .form-group { margin-bottom: 15px; text-align: left; }
+        .form-input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        
+        /* COMENTÁRIOS */
+        .feedback-item {
+            background: #f9f9f9; padding: 10px; border-radius: 8px; margin-bottom: 10px; text-align: left;
+        }
+        .feedback-header { display: flex; justify-content: space-between; font-size: 0.85em; color: #666; margin-bottom: 5px; }
+
+        /* SELETOR DE ESTRELAS (INPUT) */
+        .star-rating { direction: rtl; display: inline-block; font-size: 1.5em; }
+        .star-rating input { display: none; }
+        .star-rating label { color: #ccc; cursor: pointer; transition: 0.2s; }
+        .star-rating label:hover,
+        .star-rating label:hover ~ label,
+        .star-rating input:checked ~ label { color: #ffc107; }
+    </style>
+</head>
+<body>
+    <header class="px-5 py-4" style="background: url('images/v105_14.png') no-repeat center center; background-size: cover; height: 30vh;"></header>
+
+    <div class="container" style="max-width: 1000px; margin: 0 auto; padding: 20px;">
+        
+        <div class="search-bar">
+            <input type="text" id="searchInput" class="search-input" placeholder="Buscar professor por nome..." onkeyup="filtrarProfessores()">
+            <button class="btn-add" onclick="abrirModalCadastro()" title="Cadastrar Novo Professor">+</button>
+        </div>
+
+        <h2 style="text-align: center; color: #333; margin-bottom: 20px;">Lista de Professores</h2>
+        <div id="loading">Carregando...</div>
+        <div id="profGrid" class="prof-grid"></div>
+        
+        <div style="text-align: center; margin-top: 30px;">
+             <button onclick="window.location.href='dashboard.html'" class="btn-cadastrar" style="width: auto;">Voltar ao Painel</button>
+        </div>
+    </div>
+
+    <div id="modalCadastro" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-btn" onclick="fecharModalCadastro()">&times;</span>
+            <h2 style="color: #0b84c8; margin-bottom: 20px;">Novo Professor</h2>
+            
+            <div class="form-group">
+                <label>Nome Completo</label>
+                <input type="text" id="novoNome" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label>Email (Opcional)</label>
+                <input type="email" id="novoEmail" class="form-input" placeholder="email@uerj.br">
+            </div>
+            <div class="form-group">
+                <label>Departamento / Instituto</label>
+                <input type="text" id="novoDept" class="form-input" placeholder="Ex: Instituto de Física">
+            </div>
+            
+            <button class="btn-cadastrar" onclick="salvarProfessor()">Cadastrar</button>
+        </div>
+    </div>
+
+    <div id="modalDetalhes" class="modal-overlay">
+        <div class="modal-content" style="text-align: center;">
+            <span class="close-btn" onclick="fecharModalDetalhes()">&times;</span>
+            
+            <h2 id="detNome" style="color: #333;">Nome do Professor</h2>
+            <p id="detDept" style="color: #666; margin-bottom: 10px;">Departamento</p>
+            
+            <div id="detMedia" class="rating-stars" style="font-size: 2em;"></div>
+            <p id="detCount" style="font-size: 0.9em; color: #888;">0 avaliações</p>
+
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+
+            <div style="background: #f0f8ff; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                <h4>Avaliar Professor</h4>
+                
+                <div class="star-rating">
+                    <input type="radio" id="s5" name="rate" value="5"><label for="s5"><i class="fas fa-star"></i></label>
+                    <input type="radio" id="s4" name="rate" value="4"><label for="s4"><i class="fas fa-star"></i></label>
+                    <input type="radio" id="s3" name="rate" value="3"><label for="s3"><i class="fas fa-star"></i></label>
+                    <input type="radio" id="s2" name="rate" value="2"><label for="s2"><i class="fas fa-star"></i></label>
+                    <input type="radio" id="s1" name="rate" value="1"><label for="s1"><i class="fas fa-star"></i></label>
+                </div>
+                
+                <textarea id="feedbackMsg" class="form-input" placeholder="Deixe um comentário..." style="margin-top: 10px;"></textarea>
+                <button class="btn-cadastrar" style="padding: 5px 20px; font-size: 0.9em; margin-top: 10px;" onclick="enviarFeedback()">Enviar Avaliação</button>
+            </div>
+
+            <h4 style="text-align: left;">Comentários</h4>
+            <div id="feedbackList"></div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = 'login.html';
+
+        let listaProfessores = [];
+        let profAtualId = null;
+
+        // 1. CARREGAR LISTA
+        async function loadProfessores() {
+            try {
+                const res = await fetch('http://localhost:8000/professors/', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if(res.ok){
+                    listaProfessores = await res.json();
+                    renderGrid(listaProfessores);
+                    document.getElementById('loading').style.display = 'none';
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        // 2. RENDERIZAR GRID
+        function renderGrid(lista) {
+            const grid = document.getElementById('profGrid');
+            grid.innerHTML = "";
+            
+            if(lista.length === 0) {
+                grid.innerHTML = "<p>Nenhum professor encontrado.</p>";
+                return;
+            }
+
+            lista.forEach(p => {
+                // Calcula média visual
+                const media = calcularMedia(p.feedbacks);
+                const stars = gerarEstrelasHTML(media);
+
+                const card = document.createElement('div');
+                card.className = 'prof-card';
+                card.onclick = () => abrirModalDetalhes(p);
+                card.innerHTML = `
+                    <div style="font-size: 3em; color: #ccc; margin-bottom: 10px;"><i class="fas fa-chalkboard-teacher"></i></div>
+                    <h3>${p.nome}</h3>
+                    <p style="font-size: 0.9em; color: #666;">${p.departamento}</p>
+                    <div class="rating-stars">${stars}</div>
+                    <small style="color: #999;">${p.feedbacks.length} avaliações</small>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // 3. CADASTRAR PROFESSOR
+        async function salvarProfessor() {
+            const nome = document.getElementById('novoNome').value;
+            const email = document.getElementById('novoEmail').value;
+            const dept = document.getElementById('novoDept').value;
+
+            if(!nome || !dept) return alert("Preencha Nome e Departamento.");
+
+            try {
+                const res = await fetch('http://localhost:8000/professors/', {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        nome: nome,
+                        email: email, //|| "nao_informado@uerj.br"
+                        departamento: dept,
+                        disciplinas_ofertadas: [] // Opcional por enquanto
+                    })
+                });
+
+                if(res.ok) {
+                    alert("Professor cadastrado!");
+                    fecharModalCadastro();
+                    loadProfessores(); // Recarrega
+                } else {
+                    const err = await res.json();
+                    alert(`Erro: ${err.detail}`);
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        // 4. DETALHES E FEEDBACK
+        function abrirModalDetalhes(prof) {
+            profAtualId = prof._id;
+            document.getElementById('detNome').innerText = prof.nome;
+            document.getElementById('detDept').innerText = prof.departamento;
+            
+            // Média Grande
+            const media = calcularMedia(prof.feedbacks);
+            document.getElementById('detMedia').innerHTML = gerarEstrelasHTML(media) + ` <span style="font-size:0.5em; color:#333;">(${media})</span>`;
+            document.getElementById('detCount').innerText = `${prof.feedbacks.length} avaliações`;
+
+            // Lista de Comentários
+            const list = document.getElementById('feedbackList');
+            list.innerHTML = "";
+            if(prof.feedbacks.length === 0) {
+                list.innerHTML = "<p style='color:#999'>Seja o primeiro a avaliar!</p>";
+            } else {
+                // Mostra os últimos primeiro
+                prof.feedbacks.reverse().forEach(f => {
+                    const stars = gerarEstrelasHTML(f.nota);
+                    const data = new Date(f.data).toLocaleDateString('pt-BR');
+                    list.innerHTML += `
+                        <div class="feedback-item">
+                            <div class="feedback-header">
+                                <span style="color:#ffc107;">${stars}</span>
+                                <span>${data}</span>
+                            </div>
+                            <p>${f.comentario || "Sem comentário."}</p>
+                        </div>
+                    `;
+                });
+            }
+
+            document.getElementById('modalDetalhes').style.display = 'flex';
+        }
+
+        async function enviarFeedback() {
+            const msg = document.getElementById('feedbackMsg').value;
+            // Pega o valor do radio button selecionado
+            const rateEl = document.querySelector('input[name="rate"]:checked');
+            
+            if(!rateEl) return alert("Selecione uma nota (estrelas).");
+            const nota = parseInt(rateEl.value);
+
+            try {
+                const res = await fetch(`http://localhost:8000/professors/${profAtualId}/feedback`, {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        nota: nota,
+                        comentario: msg
+                    })
+                });
+
+                if(res.ok) {
+                    alert("Avaliação enviada!");
+                    fecharModalDetalhes();
+                    loadProfessores(); // Recarrega para atualizar a média
+                    
+                    // Limpa form
+                    document.getElementById('feedbackMsg').value = "";
+                    rateEl.checked = false;
+                } else {
+                    alert("Erro ao enviar avaliação.");
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        // UTILS
+        function calcularMedia(feedbacks) {
+            if(!feedbacks || feedbacks.length === 0) return 0;
+            const soma = feedbacks.reduce((acc, curr) => acc + curr.nota, 0);
+            return (soma / feedbacks.length).toFixed(1);
+        }
+
+        function gerarEstrelasHTML(nota) {
+            let html = "";
+            for(let i=1; i<=5; i++) {
+                if(i <= nota) html += '<i class="fas fa-star"></i>';
+                else if (i - 0.5 <= nota) html += '<i class="fas fa-star-half-alt"></i>';
+                else html += '<i class="far fa-star"></i>';
+            }
+            return html;
+        }
+
+        function filtrarProfessores() {
+            const termo = document.getElementById('searchInput').value.toLowerCase();
+            const filtrados = listaProfessores.filter(p => p.nome.toLowerCase().includes(termo));
+            renderGrid(filtrados);
+        }
+
+        // MODAIS
+        function abrirModalCadastro() { document.getElementById('modalCadastro').style.display = 'flex'; }
+        function fecharModalCadastro() { document.getElementById('modalCadastro').style.display = 'none'; }
+        function fecharModalDetalhes() { document.getElementById('modalDetalhes').style.display = 'none'; }
+
+        loadProfessores();
+    </script>
+</body>
+</html>
