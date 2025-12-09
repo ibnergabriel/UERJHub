@@ -1,6 +1,6 @@
 # 🎓 UERJHUB - Backend
 
-O **UERJHUB** é uma plataforma colaborativa para alunos da UERJ. O sistema automatiza o cadastro de disciplinas através da leitura de PDFs (RID e Histórico), gerencia turmas virtuais, repositórios de materiais e avaliações de professores.
+O **UERJHUB** é uma plataforma colaborativa para alunos da UERJ. O sistema automatiza o cadastro de disciplinas através da leitura de PDFs (Disciplinas em Curso e Histórico), gerencia turmas virtuais, repositórios de materiais e avaliações de professores.
 
 ## 🚀 Tecnologias
 
