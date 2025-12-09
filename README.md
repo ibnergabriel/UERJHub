@@ -43,7 +43,7 @@ Esta é a forma mais fácil, pois configura o Python e o Banco de Dados automati
     *Se aparecer "Application startup complete", está tudo pronto!*
 
 4.  **Acesse a Documentação (Swagger):**
-    Abra seu navegador em: 👉 **[http://localhost:8000/docs](http://localhost:8000/docs)**
+    Abra seu navegador em: **[http://localhost:8000/docs](http://localhost:8000/docs)**
 
 ---
 
@@ -75,21 +75,16 @@ Caso prefira rodar localmente para desenvolvimento rápido:
 
 ---
 
-## 🧪 Como Testar as Funcionalidades
+## ⚛️ Como Rodar o Frontend
 
-Use a interface do Swagger (**`/docs`**) para testar as rotas:
+1.  **Rode o servidor:**
+    Entre na pasta `frontend` e use o comando:
+    ```bash
+    cd frantend
+    python3 -m http.server 3000
+    ```
+2. **Acesse em:** 
 
-### 1. Cadastro de Aluno (Auth)
-* **Rota:** `POST /auth/register`
-* **Arquivos:** Envie o PDF do **RID** e do **Histórico**.
-* **O que acontece:** O sistema lê as matérias, cria o usuário e **automaticamente matricula** o aluno nas turmas correspondentes na coleção `disciplines`.
-
-### 2. Ver Turmas e Sincronização
-* **Rota:** `GET /auth/users/debug` (Para ver como o usuário ficou salvo).
-* Verifique no MongoDB (Coleção `disciplines`) se as turmas foram criadas com o horário correto e se o aluno está na lista de `membros`.
-
-### 3. Upload de Materiais
-* **Rota:** `POST /materials/{codigo}/upload`
-* Permite enviar arquivos (PDF, PPTX) vinculados a um professor e semestre. Os arquivos ficam salvos na pasta `backend/uploads`.
+Abra seu navegador em: **[http://localhost:3000/login](http://localhost:3000/login)**
 
 ---
